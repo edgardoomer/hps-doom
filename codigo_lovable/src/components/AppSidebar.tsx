@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Activity, BookOpen, Gauge, Sparkles } from "lucide-react";
+import { VERSION } from "@/lib/version";
 
 const ITEMS = [
   { to: "/curvas", label: "Curvas de eficiencia", icon: Gauge, code: "01" },
@@ -59,7 +60,7 @@ export function AppSidebar() {
       </div>
 
       <div className="mt-auto rounded-[10px] border border-border bg-secondary px-3 py-2">
-        <span className="panel-title">HPS-DOOM v0.1</span>
+        <span className="panel-title">HPS-DOOM {VERSION}</span>
         <p className="mt-1 text-[11px] text-muted-foreground">Monitoreo de bombas de superficie</p>
       </div>
     </nav>

@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Mail } from "lucide-react";
 import { SocialLinks } from "@/components/SocialLinks";
 import { useChat } from "@/context/ChatRunnerContext";
+import { VERSION } from "@/lib/version";
 
 export const Route = createFileRoute("/creditos")({
   head: () => ({
@@ -48,7 +49,7 @@ function CreditosPage() {
         <p className="text-[18px] font-medium uppercase tracking-[0.08em] text-foreground">
           HPS-DOOM
         </p>
-        <p className="num text-[12px] text-muted-foreground">v0.1</p>
+        <p className="num text-[12px] text-muted-foreground">{VERSION}</p>
         <p className="mt-1 text-[13px] text-ink-secondary">
           Monitoreo y análisis de bombas horizontales de superficie.
         </p>
