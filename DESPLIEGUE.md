@@ -169,11 +169,16 @@ sudo systemctl status hps-doom --no-pager   # debe decir "active (running)"
 La aplicación escucha en el 3000, que **no** debe quedar expuesto. Nginx
 recibe en el 80 y el 443 y reenvía hacia dentro.
 
+**Pon tu dominio en `server_name`**, no un comodín. Certbot busca el bloque
+por ese nombre en la FASE 6 y con `_` no lo encuentra: emite el certificado
+pero no lo instala. Si aún no tienes dominio, deja `_` para entrar por IP,
+pero cámbialo antes de pedir el certificado.
+
 ```bash
 sudo tee /etc/nginx/sites-available/hps-doom > /dev/null <<'EOF'
 server {
   listen 80;
-  server_name _;
+  server_name hps-doom.duckdns.org;   # tu dominio, o _ si aun no tienes
 
   location / {
     proxy_pass http://127.0.0.1:3000;
@@ -206,10 +211,25 @@ Opciones para un subdominio gratis: [DuckDNS](https://www.duckdns.org),
 [js.org](https://js.org) o [FreeDNS](https://freedns.afraid.org). Apunta un
 registro **A** de tu dominio a la IP estática de la VM.
 
+Antes de lanzar certbot, comprueba dos cosas. Que el dominio apunta a la VM y
+no a tu casa —DuckDNS toma la IP de quien lo actualiza, así que **actualízalo
+desde la propia VM**— y que el puerto 80 llega de verdad:
+
+```bash
+# Desde la VM, para que DuckDNS registre SU ip y no la tuya
+curl "https://www.duckdns.org/update?domains=TU_SUBDOMINIO&token=TU_TOKEN&ip="
+
+# Debe devolver la IP externa de la VM
+dig +short hps-doom.duckdns.org
+```
+
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d tudominio.com -d www.tudominio.com
+sudo certbot --nginx -d hps-doom.duckdns.org
 ```
+
+> Con DuckDNS pide **un solo dominio**. El `www.` resuelve por comodín pero
+> añade un segundo reto que puede fallar sin darte nada a cambio.
 
 Certbot edita Nginx, activa HTTPS y programa la renovación automática. No hay
 que tocar nada más en la aplicación: no tiene ajuste de redirección propio.
@@ -264,6 +284,14 @@ reconstruyes en tu equipo, vuelves a copiar y `sudo systemctl restart hps-doom`.
   estás en npm 10. Actualiza con `sudo npm install -g npm@11` y repite. No
   ejecutes `npm install` para "arreglar" el lock: con npm 10 genera uno que
   sigue fallando.
+- **Certbot dice `Could not automatically find a matching server block`:** el
+  `server_name` de Nginx es `_` en vez de tu dominio. Corrígelo, recarga con
+  `sudo systemctl reload nginx` e instala el certificado ya emitido con
+  `sudo certbot install --cert-name TU_DOMINIO` — no vuelvas a pedirlo, Let's
+  Encrypt limita los intentos por semana.
+- **Certbot da `Timeout during connect` al validar:** el dominio no apunta a
+  la VM. Comprueba con `dig +short TU_DOMINIO` que devuelve su IP externa; si
+  usas DuckDNS, actualízalo desde la VM y no desde tu equipo.
 - **No arranca y el log menciona `wrangler` o `Cloudflare`:** construiste sin
   `NITRO_PRESET=node-server`. Repite el build de la FASE 3.
 - **502 en Nginx:** el servicio está caído o escucha en otro puerto. Revisa
