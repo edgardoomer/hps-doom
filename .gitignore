@@ -36,3 +36,12 @@ desktop.ini
 !.vscode/extensions.json
 .idea/
 *.swp
+
+# ---------------------------------------------------------------------------
+# Material de origen — no lo usa la aplicación, se queda en local.
+# Las curvas y fichas ya están digitalizadas en
+# codigo_lovable/src/data/ y los diccionarios en src/lib/knowledge/.
+# ---------------------------------------------------------------------------
+/varios/
+/curvas_img/
+/contexto/
