@@ -110,7 +110,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      // SVG primero: los navegadores modernos lo prefieren y escala sin pixelar.
+      { rel: "icon", href: "/icono.svg", type: "image/svg+xml" },
+      { rel: "alternate icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "apple-touch-icon", href: "/icono.svg" },
     ],
   }),
   shellComponent: RootShell,
