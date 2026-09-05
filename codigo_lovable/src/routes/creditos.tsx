@@ -10,12 +10,12 @@ export const Route = createFileRoute("/creditos")({
       { title: "Créditos · HPS-DOOM" },
       {
         name: "description",
-        content: "Autor, tecnologías y agradecimientos del proyecto HPS-DOOM.",
+        content: "Autor, tecnologías y fuentes de datos del proyecto HPS-DOOM.",
       },
       { property: "og:title", content: "Créditos · HPS-DOOM" },
       {
         property: "og:description",
-        content: "Autor, tecnologías y agradecimientos del proyecto HPS-DOOM.",
+        content: "Autor, tecnologías y fuentes de datos del proyecto HPS-DOOM.",
       },
     ],
   }),
@@ -25,8 +25,8 @@ export const Route = createFileRoute("/creditos")({
 // Editable: nombre y rol que se muestran en la ficha de autor.
 const AUTOR = {
   nombre: "Edgar Fernando",
-  rol: "Ingeniería de producción · Desarrollo",
-  correo: "edgfernando18@gmail.com",
+  rol: "Operador de EPF",
+  correo: "edgar.izurieta@sertecpet.com",
 };
 
 const TECNOLOGIAS = [
@@ -99,19 +99,12 @@ function CreditosPage() {
       <section className="panel p-4">
         <h2 className="panel-title mb-2">FUENTES DE DATOS</h2>
         <p className="text-[13px] text-ink-secondary">
-          Curvas y fichas técnicas Baker Hughes HPump y AutographPC facilitadas por Sertecpet S.A.
+          Curvas y fichas técnicas Baker Hughes HPump facilitadas por Sertecpet S.A.
         </p>
         <p className="mt-1 text-[13px] text-ink-secondary">
           Las curvas por frecuencia se derivan de la curva de fábrica de 60 Hz mediante leyes de
           afinidad.
         </p>
-      </section>
-
-      <section className="panel p-4">
-        <h2 className="panel-title mb-2">AGRADECIMIENTOS</h2>
-        <p className="text-[13px] text-ink-secondary">Equipo de campo del bloque de operación.</p>
-        <p className="text-[13px] text-ink-secondary">Personal de mantenimiento mecánico.</p>
-        <p className="text-[13px] text-ink-secondary">Área de ingeniería de producción.</p>
       </section>
 
       <footer className="flex items-center justify-between px-1 pb-2 text-[11px] text-muted-foreground">
