@@ -108,11 +108,9 @@ export const procedimientos: Procedimiento[] = [
     documento: `${INTRANET}/EC.GC.EF.IN.009%20Rev%2003%20Montaje%20y%20desmontaje%20de%20bombas%20hps%20movil.pdf?d=wa321dc00cb61453790852db35feafd95&csf=1&web=1&e=eWLuu4`,
   },
   {
-    // El enlace que llegó para este apunta al mismo PDF que el de montaje y
-    // desmontaje. Queda pendiente sustituirlo por el documento correcto.
-    id: "operacion-combustion",
-    titulo: "Operación de bombas HPS con combustión",
-    codigo: "Enlace por confirmar",
-    documento: `${INTRANET}/EC.GC.EF.IN.009%20Rev%2003%20Montaje%20y%20desmontaje%20de%20bombas%20hps%20movil.pdf?d=wa321dc00cb61453790852db35feafd95&csf=1&web=1&e=eWLuu4`,
+    id: "in-034",
+    titulo: "Operación de bomba centrífuga con motor a combustión",
+    codigo: "EC.GC.EF.IN.034 Rev. 01",
+    documento: `${INTRANET}/EC.GC.EF.IN.034%20REV01%20Instructivo%20de%20Operaci%C3%B3n%20de%20Bomba%20Centr%C3%ADfuga%20con%20Motor%20a%20Combusti%C3%B3n.pdf?d=w090949db131a42aaa6e9fdba82dc8c83&csf=1&web=1&e=BuOCKk`,
   },
 ];
