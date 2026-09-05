@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Árbol de sucesos — HPS</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         background: #f6f7f9; color: #1b1f24; display: flex; flex-direction: column; }
+  @media (prefers-color-scheme: dark) { body { background: #12161b; color: #e6eaef; } }
+  header { padding: 14px 20px; border-bottom: 1px solid #dfe3e8; flex: 0 0 auto; }
+  @media (prefers-color-scheme: dark) { header { border-color: #2c3540; } }
+  h1 { margin: 0; font-size: 15px; font-weight: 600; }
+  header p { margin: 3px 0 0; font-size: 12.5px; color: #5c6672; }
+  @media (prefers-color-scheme: dark) { header p { color: #9aa6b4; } }
+  #arbol { flex: 1 1 auto; min-height: 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Árbol de sucesos — sistema de bombeo horizontal</h1>
+  <p>Clic en un nodo para ver su cadena de causas y efectos. Rueda para acercar, arrastra para mover.</p>
+</header>
+<div id="arbol"></div>
+
+<script type="application/json" id="datos-hps">{"EVENTOS":{"EV-01":{"id":"EV-01","titulo":"Presión de descarga alta","familia":"descarga","rol":"sintoma","urgencia":"corregir","preguntaGuia":"¿La descarga subió sin que hayas tocado la frecuencia?","significado":"El fluido está encontrando más resistencia de la normal para salir. O hay algo que lo frena aguas abajo, o la línea a la que descargas está más presurizada que tu bomba.","causas":["Obstrucción aguas abajo: válvula cerrando, línea taponada, check pegado","Escala o incrustación en la línea, en la turbina del medidor o dentro de las etapas","Contrapresión del cabezal: si descargas a un manifold donde convergen otras bombas y ellas empujan más fuerte, tu fluido no logra entrar a la convergencia","Presión de succión alta que se está sumando a la descarga","VRP seteada por encima de lo que corresponde"],"verificar":["Contrastar el transmisor contra el manómetro análogo","Recorrer la línea aguas abajo y confirmar la posición de cada válvula","Preguntar por la presión del cabezal y si las otras bombas cambiaron de régimen","Confirmar que el MC-II está leyendo: sin caudal no se sabe de qué lado de la curva estás"],"acciones":["Si hay obstrucción, liberarla antes de tocar la frecuencia","Si la contrapresión del cabezal es la causa, coordinar con el cliente el régimen de las otras bombas","Bajar frecuencia si hay que sostener la unidad mientras se resuelve"],"noHagas":["Subir frecuencia para 'ganarle' a la contrapresión: sólo acerca la unidad a su presión máxima de trabajo"],"empujeAxial":{"tipo":"downthrust","severidad":"moderado","porQue":"Más presión con el mismo o menos caudal desplaza el punto hacia la izquierda de la curva, que es donde el empuje carga hacia la succión."},"danos":["DA-02","DA-13","DA-08","DA-07"],"llevaA":["EV-04","EV-08","EV-15"],"provieneDe":["EV-21","EV-23","EV-24","EV-11"],"glosario":["presionDescarga","contrapresion","cabezal","vrp","downthrust"]},"EV-02":{"id":"EV-02","titulo":"Presión de descarga baja","familia":"descarga","rol":"sintoma","urgencia":"corregir","preguntaGuia":"¿La descarga bajó y el caudal sigue igual o subió?","significado":"La bomba no está logrando presurizar. O se está fugando el fluido, o la bomba ya no da lo que daba, o hay aire adentro.","causas":["Fuga en la tubería aguas abajo","Desgaste de etapas: la bomba perdió capacidad hidráulica","Aire o gas atrapado dentro de la bomba","Presión de succión insuficiente","Frecuencia más baja de la que se cree","Válvula de bypass abierta de más, o línea desviada"],"verificar":["Recorrer toda la tubería aguas abajo buscando fuga: es lo primero, y es un tema de seguridad además de operación","Contrastar el manómetro análogo contra el transmisor","Confirmar la frecuencia real en el variador","Revisar la posición del bypass"],"acciones":["Si no hay fuga y sobra caudal, estrangular (chocar) el flujo aguas abajo para recuperar presión, poco a poco","Vigilar que el caudal no baje del MCSF mientras estrangulas","Si la presión no responde al estrangular, sospechar aire en la bomba o desgaste"],"noHagas":["Estrangular de golpe: pasas de un extremo de la curva al otro y cambias upthrust por recirculación"],"empujeAxial":{"tipo":"upthrust","severidad":"moderado","porQue":"Poca presión suele venir acompañada de caudal alto, y eso desplaza el punto a la derecha de la curva, donde el empuje se invierte hacia la descarga."},"danos":["DA-01","DA-10","DA-16","DA-17"],"llevaA":["EV-03","EV-09"],"provieneDe":["EV-10","EV-18","EV-25","EV-26","EV-28"],"glosario":["presionDescarga","estrangular","mcsf","upthrust","desgasteDeEtapas"]},"EV-03":{"id":"EV-03","titulo":"Caudal muy alto con presión baja","familia":"caudal","rol":"sintoma","urgencia":"parar","preguntaGuia":"¿El caudal se disparó y la presión se cayó?","significado":"La bomba se quedó sin nada que la frene y está entregando mucho más caudal del que le corresponde. Es el extremo derecho de la curva, la zona de runout.","causas":["Las bombas que aportan al mismo cabezal están fuera de servicio, así que desapareció la contrapresión que sostenía tu punto","Válvula de descarga demasiado abierta o VRP mal seteada","Ruptura de línea aguas abajo","Lectura de caudal errónea: medidor descalibrado"],"verificar":["Confirmar con el cliente el estado de las otras bombas del cabezal","Contrastar la lectura del caudalímetro antes de actuar sobre una lectura falsa","Revisar la posición de la válvula de descarga y el seteo de la VRP","Recorrer la línea buscando ruptura"],"acciones":["Bajar frecuencia de inmediato para devolver el caudal al rango de la curva","Estrangular la descarga para recuperar contrapresión","Vigilar el amperaje mientras corriges: en esta zona el motor está pidiendo más potencia de la normal"],"noHagas":["Dejar la unidad así 'mientras se resuelve': es la condición que más rápido destruye una HPS"],"empujeAxial":{"tipo":"upthrust","severidad":"severo","porQue":"Con caudal por encima del rango los impulsores se levantan de su apoyo normal y quedan golpeando contra el lado de descarga. Es el empuje que más rápido consume arandelas y fatiga el eje."},"danos":["DA-01","DA-03","DA-12","DA-05","DA-11","DA-04"],"llevaA":["EV-08","EV-13","EV-17","EV-20"],"provieneDe":["EV-02","EV-23","EV-25","EV-19"],"glosario":["runout","upthrust","contrapresion","cabezal","npsh"],"escalar":"Si no puedes recuperar contrapresión bajando frecuencia ni estrangulando, para la unidad y avisa antes de que el daño sea mecánico."},"EV-04":{"id":"EV-04","titulo":"Caudal bajo con presión alta","familia":"caudal","rol":"sintoma","urgencia":"corregir","preguntaGuia":"¿El caudal bajó mientras la presión subía?","significado":"Hay una constricción aguas abajo. La bomba está empujando contra algo que no la deja pasar y se corrió a la zona izquierda de la curva.","causas":["Restricción aguas abajo: válvula cerrando o línea parcialmente taponada","Turbina del medidor tapada, que además de no medir se convierte en una restricción real","Escala acumulada en la línea o dentro de la bomba","Estrangulamiento excesivo hecho a propósito para subir presión"],"verificar":["Revisar el diferencial de presión a través del medidor","Confirmar la posición de las válvulas aguas abajo","Comparar el amperaje con el histórico: si viene subiendo desde hace semanas, es escala"],"acciones":["Abrir la descarga hasta devolver el caudal por encima del MCSF","Programar limpieza de la turbina o de la línea si se confirma taponamiento","Si el caudal no se recupera al abrir, la restricción es interna: escalar a Mantenimiento"],"empujeAxial":{"tipo":"downthrust","severidad":"moderado","porQue":"Poco caudal y mucha presión es la izquierda de la curva: los impulsores cargan contra el lado de succión con más fuerza de la prevista."},"danos":["DA-02","DA-03","DA-08","DA-14"],"llevaA":["EV-05","EV-08","EV-15"],"provieneDe":["EV-01","EV-21","EV-24"],"glosario":["downthrust","mcsf","turbina","escala"]},"EV-05":{"id":"EV-05","titulo":"Sin caudal con buena presión (recirculación)","familia":"caudal","rol":"falla","urgencia":"parar","preguntaGuia":"¿Tienes buena presión pero el caudal está en cero o casi, y el cuerpo de la bomba se está calentando?","significado":"El fluido está dando vueltas dentro de la bomba sin lograr salir. No consigue vencer la presión de la línea para entrar a la convergencia del flujo, así que toda la energía del motor se queda adentro convertida en calor.","causas":["Descarga cerrada o casi cerrada","Presión del cabezal por encima de lo que la bomba puede vencer","Check de descarga pegado","Obstrucción total aguas abajo"],"verificar":["Tocar el cuerpo de la bomba: la temperatura subiendo por encima de lo normal confirma la recirculación","Comparar la presión de descarga contra la del cabezal","Confirmar que el caudal cero es real y no un MC-II caído"],"acciones":["Abrir la descarga o bajar frecuencia de inmediato para restablecer caudal","Si la presión del cabezal es la que bloquea, coordinar con el cliente","Si no se puede restablecer caudal en minutos, parar la unidad"],"noHagas":["Sostener la unidad en esta condición esperando que 'entre' el flujo: la bomba se está cocinando por dentro"],"empujeAxial":{"tipo":"downthrust","severidad":"severo","porQue":"Con la descarga cerrada la bomba está en su punto de máxima presión y caudal cero, que es el extremo izquierdo de la curva. Ahí el empuje hacia la succión es el máximo posible."},"correccion":"Este caso es downthrust severo, no upthrust. El upthrust es la situación contraria: caudal excesivo y presión baja (ver EV-03). Se confunden fácil porque los dos son 'fuera de rango', pero el daño y la corrección son opuestos.","danos":["DA-02","DA-08","DA-07","DA-15","DA-06","DA-03"],"llevaA":["EV-13","EV-15","EV-16","EV-18","EV-20"],"provieneDe":["EV-04","EV-19","EV-23","EV-24"],"glosario":["recirculacion","shutOff","downthrust","recalentamiento","mcsf"],"escalar":"Si la temperatura sigue subiendo con la descarga ya abierta, para y llama."},"EV-06":{"id":"EV-06","titulo":"Caudal normal con presión de descarga muy alta","familia":"caudal","rol":"sintoma","urgencia":"vigilar","preguntaGuia":"¿El caudal está donde siempre pero la descarga está altísima?","significado":"Si el caudal es el de siempre, la bomba está trabajando igual que siempre. Entonces la presión de más no la está poniendo la bomba: viene de la succión, o el instrumento está mintiendo.","causas":["Presión de succión fuera de rango, demasiado alta, que se suma a la descarga","Transmisor de descarga descalibrado","Alarmas bypasseadas que estaban ocultando la condición desde un turno anterior"],"verificar":["Leer la succión y compararla con su rango normal","Contrastar el transmisor contra el manómetro análogo","Revisar si hay alarmas en bypass en el panel o en el variador"],"acciones":["Si la succión es la causa, tratarla como EV-11","Si el instrumento es la causa, corregir la lectura antes de tomar cualquier decisión operativa"],"empujeAxial":{"tipo":"ninguno","severidad":"no aplica","porQue":"Con el caudal en su rango normal el punto sigue dentro de la ventana de la curva, así que el empuje no cambia. El riesgo aquí es de presión, no de empuje."},"danos":["DA-13","DA-07","DA-18"],"llevaA":["EV-16"],"provieneDe":["EV-11"],"glosario":["manometroAnalogo","bypassDeAlarmas","presionSuccion"]},"EV-07":{"id":"EV-07","titulo":"Caudal bajo y presión baja a la vez","familia":"caudal","rol":"sintoma","urgencia":"corregir","preguntaGuia":"¿Bajaron las dos cosas al mismo tiempo?","significado":"Cuando caen las dos, el problema casi nunca está aguas abajo: a la bomba no le está llegando lo que necesita, o ya no puede con lo que le llega.","causas":["Strainer sucio","Presión de succión insuficiente","Aire o gas dentro de la bomba","Desgaste severo de etapas","Frecuencia más baja de la que se cree"],"verificar":["Leer la presión de succión y el diferencial del strainer","Confirmar que la booster está trabajando","Confirmar la frecuencia en el variador"],"acciones":["Limpiar el strainer si el diferencial lo confirma","Si la succión está bien y el strainer limpio, ventear la bomba por los capilares","Si nada de eso lo explica, contrastar el punto contra la curva: puede ser desgaste"],"empujeAxial":{"tipo":"downthrust","severidad":"moderado","porQue":"Con caudal por debajo del rango el punto se corre a la izquierda de la curva, aunque la presión también esté baja."},"danos":["DA-02","DA-05","DA-10"],"llevaA":["EV-15"],"provieneDe":["EV-10","EV-12","EV-18","EV-26"],"glosario":["strainer","presionSuccion","gasLock","desgasteDeEtapas"]},"EV-10":{"id":"EV-10","titulo":"Presión de succión baja","familia":"succion","rol":"sintoma","urgencia":"corregir","preguntaGuia":"¿La succión está por debajo de su rango normal?","significado":"A la bomba no le está llegando fluido con la presión que necesita. Si baja lo suficiente, el fluido hierve dentro de la bomba y empieza la cavitación.","causas":["Bomba booster apagada o fallando","Strainer sucio","El cliente no está entregando el fluido necesario","Nivel bajo en el tanque o el pulmón","Válvula de succión parcialmente cerrada"],"verificar":["Confirmar el funcionamiento de la bomba booster: es lo primero","Revisar el diferencial del strainer","Confirmar nivel y aporte del lado del cliente","Escuchar la bomba: ruido de grava es cavitación en curso"],"acciones":["Restablecer la booster si está caída","Limpiar el strainer si el diferencial lo confirma","Bajar frecuencia mientras se resuelve: a menos caudal, menos presión de succión necesita la bomba"],"noHagas":["Subir frecuencia para 'jalar' más fluido: agrava la cavitación"],"empujeAxial":{"tipo":"downthrust","severidad":"leve","porQue":"La succión baja arrastra el caudal hacia abajo y con él el punto hacia la izquierda. El riesgo principal aquí no es el empuje sino la cavitación."},"danos":["DA-05","DA-06","DA-07","DA-10"],"llevaA":["EV-02","EV-07","EV-17","EV-18"],"provieneDe":["EV-12","EV-14","EV-27"],"glosario":["presionSuccion","bombaBooster","strainer","cavitacion","npsh"]},"EV-11":{"id":"EV-11","titulo":"Presión de succión alta","familia":"succion","rol":"sintoma","urgencia":"corregir","preguntaGuia":"¿La succión está por encima de su rango normal?","significado":"Te está llegando más presión de la que la unidad necesita. Esa presión se suma íntegra a la descarga y se la come el sello mecánico.","causas":["El cliente está entregando con más presión de la acordada","Booster sobredimensionada para el régimen actual","La HPS está tomando menos caudal del que le llega, así que la presión se acumula en la succión","Bypass cerrado"],"verificar":["Comparar succión y descarga contra la presión máxima de trabajo de la unidad","Revisar el estado del bypass","Confirmar la lectura contra el manómetro análogo"],"acciones":["Si puedes subir frecuencia manteniendo una presión de descarga segura, súbela: al tomar más caudal, la succión baja sola. Es la opción preferida.","Si ya no queda margen de frecuencia, aperturar levemente la válvula de bypass","Coordinar con el cliente si el exceso viene de su lado"],"noHagas":["Abrir el bypass de golpe: el fluido empieza a recircular y se calienta","Subir frecuencia sin mirar la descarga: puedes cambiar un problema de succión por una sobrepresión"],"empujeAxial":{"tipo":"downthrust","severidad":"leve","porQue":"La presión de succión alta empuja el conjunto rotativo hacia la descarga y descarga algo el apoyo normal, pero mientras el caudal siga en rango el empuje sigue siendo el de diseño. El daño real aquí es sobre el sello."},"danos":["DA-07","DA-13","DA-16"],"llevaA":["EV-01","EV-06","EV-16"],"provieneDe":[],"glosario":["presionSuccion","selloMecanico","bypass","frecuencia"]},"EV-12":{"id":"EV-12","titulo":"Strainer sucio u obstruido","familia":"succion","rol":"causaRaiz","urgencia":"corregir","preguntaGuia":"¿La succión sigue baja a pesar de tener la bomba booster encendida?","significado":"La canasta se llenó de sólidos y está ahogando la entrada de la bomba. Todo lo que pase por ahí llega con menos presión de la que debería.","causas":["Acumulación normal de sólidos con el tiempo","Aumento de arena en el fluido del cliente","Limpieza vencida en el programa de mantenimiento"],"verificar":["Medir el diferencial de presión entre los dos lados del strainer","Comparar con el registro de la última limpieza"],"acciones":["Programar y ejecutar la limpieza del strainer","Mientras tanto, bajar frecuencia para reducir la exigencia de succión","Si sale mucha arena, avisar al cliente: el origen está en su fluido"],"empujeAxial":{"tipo":"downthrust","severidad":"leve","porQue":"Restringe el caudal disponible y corre el punto hacia la izquierda de la curva."},"danos":["DA-05","DA-09"],"llevaA":["EV-07","EV-10","EV-17"],"provieneDe":["EV-22"],"glosario":["strainer","solidos","presionSuccion"]},"EV-14":{"id":"EV-14","titulo":"El cliente no está entregando fluido","familia":"succion","rol":"causaRaiz","urgencia":"corregir","preguntaGuia":"¿Sigues sin presión de succión aunque el strainer está limpio y la booster trabajando?","significado":"El problema ya no es tuyo: no está llegando fluido a la unidad. Tanque vacío, línea del cliente cerrada o aporte interrumpido aguas arriba.","causas":["Tanque o pulmón del cliente vacío o en nivel mínimo","Válvula del cliente cerrada","Aporte de pozos interrumpido"],"verificar":["Confirmar nivel del tanque con el operador del cliente","Recorrer la línea de succión hasta el punto de entrega"],"acciones":["Parar la unidad antes de que trabaje en seco","Dejar constancia y coordinar la reanudación con el cliente"],"noHagas":["Mantener la bomba corriendo 'a ver si llega': trabajar en seco destruye el sello en minutos"],"empujeAxial":{"tipo":"variable","severidad":"severo","porQue":"Sin fluido no hay punto de operación estable: la bomba oscila entre vacío y golpes de caudal, y el empuje cambia de sentido con cada oscilación."},"danos":["DA-06","DA-07","DA-08","DA-03","DA-17"],"llevaA":["EV-09","EV-10","EV-16","EV-18"],"provieneDe":[],"glosario":["presionSuccion","selloMecanico","gasLock"]},"EV-27":{"id":"EV-27","titulo":"Falla de la bomba booster","familia":"succion","rol":"causaRaiz","urgencia":"corregir","preguntaGuia":"¿La booster está encendida y realmente entregando?","significado":"Sin booster, la HPS se queda sin el colchón de presión que necesita en la entrada. Es una de las causas más frecuentes de succión baja.","causas":["Booster apagada o disparada","Falla eléctrica en su arrancador","Booster cavitando o con su propio problema de succión"],"verificar":["Confirmar que está corriendo y que su descarga sube","Revisar su arrancador y sus protecciones"],"acciones":["Restablecer la booster","Bajar frecuencia de la HPS mientras tanto","Si no arranca, escalar a Mantenimiento"],"empujeAxial":{"tipo":"downthrust","severidad":"leve","porQue":"Su falla arrastra el caudal hacia abajo por falta de aporte en la succión."},"danos":["DA-05","DA-06"],"llevaA":["EV-10","EV-17"],"provieneDe":[],"glosario":["bombaBooster","presionSuccion"]},"EV-08":{"id":"EV-08","titulo":"Amperaje alto","familia":"electrico","rol":"sintoma","urgencia":"parar","preguntaGuia":"¿El amperaje está por encima de lo normal para esta frecuencia?","significado":"Al motor le está costando más de lo normal mover la bomba. Algo aumentó la carga: escala, sólidos, roce mecánico o demasiado caudal.","causas":["Escala o incrustación acumulada: la causa más común cuando el amperaje viene subiendo desde hace semanas","Sólidos o arena dentro de la bomba","Roce mecánico por desgaste o por dilatación térmica","Caudal excesivo: en la zona de runout el motor pide bastante más potencia","Fluido más denso que el declarado","Problema eléctrico: desbalance de fases o aislamiento"],"verificar":["Comparar contra el histórico: subida lenta apunta a escala, subida brusca a roce o a un cambio de proceso","Confirmar caudal y presión para saber dónde está el punto en la curva","Revisar si hay alarmas del variador en bypass"],"acciones":["Bajar frecuencia para reducir carga mientras se diagnostica","Si el punto está en runout, corregir la contrapresión (ver EV-03)","Si se confirma escala, programar la limpieza con Mantenimiento"],"noHagas":["Desactivar o bypassear las alarmas del variador para que la unidad no dispare. Esa alarma es lo único que está entre un amperaje alto y un eje partido o un motor quemado."],"empujeAxial":{"tipo":"variable","severidad":"moderado","porQue":"El amperaje alto no define por sí solo el empuje: hay que mirar el caudal. Con caudal alto es upthrust; con caudal bajo y presión alta es downthrust por escala o restricción."},"danos":["DA-11","DA-04","DA-15","DA-12"],"llevaA":["EV-20"],"provieneDe":["EV-01","EV-03","EV-04","EV-21","EV-22"],"glosario":["amperaje","escala","variador","bypassDeAlarmas","potencia"],"escalar":"Si el amperaje sigue subiendo con la frecuencia ya reducida, para la unidad y llama a Mantenimiento."},"EV-09":{"id":"EV-09","titulo":"Amperaje bajo o caído de golpe","familia":"electrico","rol":"sintoma","urgencia":"parar","preguntaGuia":"¿El amperaje cayó de golpe con el motor todavía corriendo?","significado":"El motor dejó de tener carga. O la bomba no tiene qué bombear, o ya no está conectada al motor.","causas":["Eje partido o acople roto: si además desapareció la presión, es lo primero que hay que descartar","Gas lock: la bomba gira sin empujar nada","Falta de fluido en la succión"],"verificar":["Mirar presión y caudal al mismo tiempo: sin presión y sin caudal con el motor corriendo es eje partido hasta que se demuestre lo contrario","Revisar succión y nivel de aporte"],"acciones":["Parar la unidad si se sospecha eje partido: seguir girando sólo suma daño","Si es gas lock, ventear por los capilares con un balde debajo","Escalar a Mantenimiento"],"empujeAxial":{"tipo":"ninguno","severidad":"no aplica","porQue":"Sin carga hidráulica no hay empuje que administrar. El daño, si lo hay, ya ocurrió."},"danos":["DA-04","DA-06","DA-07","DA-17"],"llevaA":["EV-20"],"provieneDe":["EV-02","EV-14","EV-18"],"glosario":["amperaje","eje","gasLock"]},"EV-19":{"id":"EV-19","titulo":"MC-II sin señal de caudal","familia":"instrumentacion","rol":"sintoma","urgencia":"corregir","preguntaGuia":"¿El MC-II está en cero o congelado aunque la bomba está entregando?","significado":"El computador de flujo dejó de recibir los pulsos del pick-up. La bomba puede estar perfecta, pero te quedaste sin el dato que te dice de qué lado de la curva estás.","causas":["Pick-up sucio en la punta","Conexión turbina–pick-up sucia o con óxido","Cables sueltos o sin contacto","Pick-up mal roscado a la turbina, demasiado lejos del rotor","Pick-up defectuoso","Problema de alimentación del MC-II"],"verificar":["Limpiar el pick-up y su conexión con la turbina","Revisar cable por cable que no haya ninguno sin contacto","Confirmar que el pick-up está bien atornillado a la turbina y a la distancia correcta del rotor","Confirmar alimentación del equipo"],"acciones":["Seguir esos cuatro pasos en ese orden: limpieza, cables, ajuste, alimentación","Mientras no haya caudal, estimar el punto con presión y frecuencia y hacer rondas más seguidas","Si después de todo eso el MC-II sigue sin responder, contactar a Mantenimiento lo antes posible para sostener una operación segura y de excelencia con el cliente"],"empujeAxial":{"tipo":"ninguno","severidad":"no aplica","porQue":"El evento no carga la bomba. El riesgo es indirecto y serio: sin caudal no puedes saber si estás en upthrust o si cruzaste el MCSF, así que un daño de empuje puede avanzar sin que nadie lo vea."},"danos":["DA-18"],"llevaA":["EV-03","EV-05"],"provieneDe":["EV-21","EV-22"],"glosario":["mcII","pickUp","turbina","caudal"],"escalar":"Si tras limpiar, revisar cables y confirmar el ajuste del pick-up sigue sin señal, es tema de Mantenimiento. No se sigue interviniendo el equipo."},"EV-23":{"id":"EV-23","titulo":"Bombas del cabezal fuera de servicio o en otro régimen","familia":"proceso","rol":"causaRaiz","urgencia":"corregir","preguntaGuia":"¿Cambió algo en las otras bombas que descargan al mismo cabezal?","significado":"Tu punto de operación depende de lo que hagan las demás. Si se apagan, te quedas sin contrapresión y te vas a caudal excesivo; si suben presión, tu fluido no logra entrar a la convergencia.","causas":["Otras bombas del cabezal fuera de servicio","Otras bombas subieron régimen y ahora dominan el cabezal","Cambio de alineación de líneas del lado del cliente"],"verificar":["Confirmar con el cliente el estado y el régimen de las demás unidades","Comparar tu presión de descarga contra la del cabezal"],"acciones":["Ajustar frecuencia para reacomodar tu punto al nuevo escenario del cabezal","Coordinar el régimen con el cliente en lugar de compensarlo con frecuencia"],"empujeAxial":{"tipo":"variable","severidad":"severo","porQue":"Según hacia dónde cambie el cabezal: si desaparece contrapresión, upthrust; si te bloquean la descarga, downthrust y recirculación."},"danos":["DA-01","DA-02","DA-08"],"llevaA":["EV-01","EV-03","EV-05"],"provieneDe":[],"glosario":["cabezal","contrapresion","upthrust","downthrust"]},"EV-13":{"id":"EV-13","titulo":"Vibración alta","familia":"mecanico","rol":"sintoma","urgencia":"corregir","preguntaGuia":"¿La unidad está vibrando más de lo normal?","significado":"La vibración es siempre un síntoma. Lo importante es de dónde viene, y para eso basta una prueba: cambiar el caudal y ver si cambia.","causas":["Upthrust: los impulsores están repiqueteando","Cavitación","Recirculación por caudal por debajo del MCSF","Desalineación del acople","Pernos de anclaje o soportes flojos","Rodamientos gastados"],"verificar":["Cambiar el caudal y observar: si la vibración cambia, el origen es hidráulico; si no cambia, es mecánico","Revisar anclajes y el estado del acople","Tomar temperatura de la cámara de empuje"],"acciones":["Si es hidráulica, devolver el punto a la ventana del BEP","Si es mecánica, escalar a Mantenimiento: no se corrige operando"],"empujeAxial":{"tipo":"variable","severidad":"moderado","porQue":"Cuando el origen es hidráulico, la vibración es la manifestación audible del empuje mal administrado."},"danos":["DA-12","DA-04","DA-14","DA-07"],"llevaA":["EV-16","EV-20"],"provieneDe":["EV-03","EV-05","EV-17"],"glosario":["vibracion","acople","upthrust","cavitacion"]},"EV-15":{"id":"EV-15","titulo":"Temperatura alta en el cuerpo o en la cámara de empuje","familia":"mecanico","rol":"sintoma","urgencia":"parar","preguntaGuia":"¿El cuerpo de la bomba o la cámara están más calientes que de costumbre?","significado":"El calor sobrante siempre sale de lo mismo: energía que entró y no salió como caudal. Es la confirmación física de que la bomba está trabajando donde no debe.","causas":["Recirculación o caudal por debajo del MCSF","Descarga cerrada o casi cerrada","Nivel bajo o aceite degradado en la cámara de empuje","Roce mecánico"],"verificar":["Confirmar caudal real y compararlo con el MCSF","Revisar nivel y aspecto del aceite de la cámara: lechoso es agua, oscuro es recalentamiento, con partículas ya es metal"],"acciones":["Restablecer caudal de inmediato","Si la temperatura no cede, parar la unidad","Programar cambio de aceite si está degradado"],"empujeAxial":{"tipo":"downthrust","severidad":"severo","porQue":"El calor viene casi siempre de operar con poco o ningún caudal, que es justo la zona de máximo downthrust."},"danos":["DA-08","DA-14","DA-07","DA-15"],"llevaA":["EV-16","EV-20"],"provieneDe":["EV-01","EV-04","EV-05","EV-07","EV-21"],"glosario":["recalentamiento","camaraDeEmpuje","recirculacion","mcsf"]},"EV-16":{"id":"EV-16","titulo":"Fuga por el sello mecánico","familia":"mecanico","rol":"falla","urgencia":"parar","preguntaGuia":"¿Hay goteo o chorro por la zona donde el eje sale de la bomba?","significado":"Las caras del sello ya no están sellando. Empieza como goteo y termina como chorro, y por el camino es un derrame.","causas":["Presión de succión por encima de lo que el sello aguanta","Funcionamiento en seco o con gas lock","Recalentamiento","Sólidos rayando las caras","Vibración"],"verificar":["Cuantificar la fuga: gotas por minuto contra chorro continuo","Revisar presión de succión y temperatura","Buscar la causa aguas arriba: el sello es la víctima, no el culpable"],"acciones":["Corregir la causa: bajar succión, restablecer caudal, ventear si hay gas","Contener el derrame","Si es chorro, parar y escalar"],"empujeAxial":{"tipo":"ninguno","severidad":"no aplica","porQue":"Es una consecuencia, no una causa de empuje."},"danos":["DA-07","DA-16","DA-17"],"llevaA":["EV-20"],"provieneDe":["EV-05","EV-06","EV-11","EV-13","EV-14","EV-15","EV-17","EV-18","EV-22"],"glosario":["selloMecanico","presionSuccion","gasLock"]},"EV-17":{"id":"EV-17","titulo":"Cavitación","familia":"mecanico","rol":"falla","urgencia":"parar","preguntaGuia":"¿Suena como si la bomba estuviera moviendo grava?","significado":"El fluido está hirviendo dentro de la bomba porque llega con muy poca presión, y las burbujas implosionan contra el metal. Cada implosión se lleva un pedacito de impulsor.","causas":["Presión de succión insuficiente","Strainer sucio","Booster caída","Caudal excesivo: en runout la bomba necesita mucha más presión de succión"],"verificar":["Leer la succión y compararla con lo que la bomba necesita a ese caudal","Revisar strainer y booster"],"acciones":["Bajar frecuencia: a menos caudal, menos presión de succión requiere la bomba","Restablecer el aporte de succión","No sostener la condición: el daño es acumulado y no se recupera"],"empujeAxial":{"tipo":"variable","severidad":"moderado","porQue":"Suele venir acompañada de caudal inestable, y con él el empuje oscila en lugar de mantenerse en una dirección."},"danos":["DA-05","DA-10","DA-12","DA-07"],"llevaA":["EV-13","EV-16","EV-26"],"provieneDe":["EV-03","EV-10","EV-12","EV-27"],"glosario":["cavitacion","npsh","presionSuccion","runout"]},"EV-18":{"id":"EV-18","titulo":"Aire o gas dentro de la bomba (gas lock)","familia":"mecanico","rol":"sintoma","urgencia":"corregir","preguntaGuia":"¿Los parámetros del variador están normales pero aun así no tienes presión ni caudal?","significado":"Hay una bolsa de aire atrapada entre las etapas. La bomba gira como si todo estuviera bien, pero no logra empujar nada.","causas":["Arranque sin cebar correctamente","Entrada de aire por succión con nivel muy bajo","Gas liberado del propio fluido","Intervención reciente en la línea de succión"],"verificar":["Confirmar que el variador marca frecuencia y amperaje normales o algo bajos","Confirmar que succión y descarga no responden"],"acciones":["Ventear la bomba por medio de sus capilares hasta que salga fluido limpio y continuo","Usar un balde para recoger, y evitar el derrame","Si vuelve a ocurrir, buscar por dónde está entrando el aire en la succión"],"noHagas":["Insistir con la bomba corriendo sin ventear: mientras está en gas lock el sello trabaja sin lubricación"],"empujeAxial":{"tipo":"variable","severidad":"moderado","porQue":"Con bolsas de gas el caudal aparece y desaparece, y el empuje cambia de sentido en cada oscilación."},"danos":["DA-06","DA-07","DA-08"],"llevaA":["EV-02","EV-07","EV-09","EV-16"],"provieneDe":["EV-05","EV-10","EV-14"],"glosario":["gasLock","venteo","selloMecanico"]},"EV-20":{"id":"EV-20","titulo":"Rotura del eje","familia":"mecanico","rol":"falla","urgencia":"parar","preguntaGuia":"¿El motor sigue girando pero desapareció la presión y el amperaje cayó en seco?","significado":"El eje se partió. La bomba ya no está siendo arrastrada por el motor. Es una falla terminal y es el final de una historia larga.","causas":["Upthrust sostenido: la causa más frecuente","Escala acumulada, sobre todo al arrancar contra una bomba incrustada","Vibración crónica no corregida","Alarmas del variador anuladas que dejaron pasar una sobrecarga"],"verificar":["Confirmar que no es un problema de instrumentación antes de declararlo"],"acciones":["Parar la unidad de inmediato","Escalar a Mantenimiento","Recuperar el histórico de amperaje, caudal y presión: ahí está la causa"],"empujeAxial":{"tipo":"ninguno","severidad":"no aplica","porQue":"Es el resultado del empuje mal administrado, no una condición de empuje."},"danos":["DA-04","DA-17"],"llevaA":[],"provieneDe":["EV-03","EV-05","EV-08","EV-09","EV-13","EV-15","EV-16","EV-21"],"glosario":["roturaDeEje","eje","upthrust","escala"]},"EV-28":{"id":"EV-28","titulo":"Rotación invertida","familia":"mecanico","rol":"causaRaiz","urgencia":"parar","preguntaGuia":"¿Es el primer arranque después de una intervención eléctrica y la unidad da mucho menos de lo que debería?","significado":"El motor está girando al revés. La bomba entrega algo de presión, pero muy por debajo de su curva, y con amperaje bajo.","causas":["Fases invertidas tras una intervención en el arrancador o en el variador"],"verificar":["Confirmar el sentido de giro contra la flecha del equipo","Comparar el punto contra la curva: mucho menos head del esperado con amperaje bajo"],"acciones":["Parar y corregir el sentido de giro antes de seguir operando"],"empujeAxial":{"tipo":"variable","severidad":"moderado","porQue":"El empuje no sigue el patrón de diseño porque el flujo dentro de las etapas es anómalo."},"danos":["DA-10","DA-03"],"llevaA":["EV-02","EV-26"],"provieneDe":[],"glosario":["eje","curvaDeFabrica"]},"EV-21":{"id":"EV-21","titulo":"Escala o incrustación","familia":"proceso","rol":"causaRaiz","urgencia":"vigilar","preguntaGuia":"¿El amperaje viene subiendo semana a semana sin que hayas cambiado nada?","significado":"Se está formando depósito mineral duro dentro de la bomba, del medidor y de la línea. Avanza despacio, y por eso se detecta comparando con el histórico, no con la lectura de hoy.","causas":["Química del fluido del cliente","Tratamiento químico insuficiente o suspendido","Cambios de temperatura y presión que precipitan el mineral"],"verificar":["Revisar la tendencia de amperaje, caudal y presión de las últimas semanas","Revisar el programa de tratamiento químico con el cliente"],"acciones":["Reportar la tendencia antes de que se vuelva una restricción","Coordinar limpieza química o mecánica con Mantenimiento"],"empujeAxial":{"tipo":"downthrust","severidad":"moderado","porQue":"La incrustación estrangula el paso, así que baja el caudal y sube la presión: el punto se corre a la izquierda de la curva."},"danos":["DA-02","DA-11","DA-15","DA-04"],"llevaA":["EV-01","EV-04","EV-08","EV-15","EV-19","EV-20"],"provieneDe":[],"glosario":["escala","amperaje","turbina"]},"EV-22":{"id":"EV-22","titulo":"Sólidos o arena en el fluido","familia":"proceso","rol":"causaRaiz","urgencia":"vigilar","preguntaGuia":"¿Está saliendo más arena de lo normal en el strainer?","significado":"El fluido del cliente trae partículas. Tapan el strainer, liman los impulsores y rayan las caras del sello.","causas":["Producción de arena en los pozos del cliente","Limpieza o intervención reciente aguas arriba","Falla en la separación previa"],"verificar":["Revisar la cantidad de sólidos en cada limpieza de strainer","Comparar contra limpiezas anteriores"],"acciones":["Acortar el intervalo de limpieza del strainer","Reportar al cliente: el origen está en su fluido, no en la unidad"],"empujeAxial":{"tipo":"ninguno","severidad":"no aplica","porQue":"Es un agente de desgaste; el empuje lo definen el caudal y la presión."},"danos":["DA-09","DA-07","DA-10"],"llevaA":["EV-08","EV-12","EV-16","EV-19","EV-26"],"provieneDe":[],"glosario":["solidos","strainer","selloMecanico"]},"EV-24":{"id":"EV-24","titulo":"Obstrucción aguas abajo","familia":"proceso","rol":"causaRaiz","urgencia":"corregir","preguntaGuia":"¿Hay alguna válvula cerrando, un check pegado o algo taponado en la línea?","significado":"Algo mecánico está frenando el paso del fluido después de la bomba. Es la explicación más directa de una presión de descarga alta con caudal bajo.","causas":["Válvula parcialmente o totalmente cerrada","Check de descarga pegado","Línea taponada","Cierre brusco que además provocó golpe de ariete"],"verificar":["Recorrer la línea confirmando posición de cada válvula","Revisar el check de descarga"],"acciones":["Liberar la obstrucción antes de tocar la frecuencia","Maniobrar las válvulas despacio para no provocar golpe de ariete"],"empujeAxial":{"tipo":"downthrust","severidad":"severo","porQue":"Es la causa directa de la condición de válvula cerrada, donde el downthrust llega a su máximo."},"danos":["DA-02","DA-08","DA-13"],"llevaA":["EV-01","EV-04","EV-05"],"provieneDe":[],"glosario":["aguasArribaAbajo","golpeDeAriete","shutOff"]},"EV-25":{"id":"EV-25","titulo":"Fuga en la línea de descarga","familia":"proceso","rol":"causaRaiz","urgencia":"parar","preguntaGuia":"¿La presión se cayó y el caudal se disparó al mismo tiempo?","significado":"El fluido está saliendo por donde no debe. Además del riesgo ambiental, la bomba se queda sin contrapresión y se va a caudal excesivo.","causas":["Ruptura de línea","Brida o empaque fallando","Corrosión"],"verificar":["Recorrer toda la tubería aguas abajo de la unidad","Contrastar caudal entregado contra caudal recibido por el cliente"],"acciones":["Parar la unidad y aislar el tramo","Reportar el derrame según procedimiento"],"empujeAxial":{"tipo":"upthrust","severidad":"severo","porQue":"Al desaparecer la contrapresión el caudal se dispara y la bomba se va al extremo derecho de la curva."},"danos":["DA-16","DA-01","DA-17"],"llevaA":["EV-02","EV-03"],"provieneDe":[],"glosario":["contrapresion","upthrust","presionDescarga"]},"EV-26":{"id":"EV-26","titulo":"Desgaste de etapas","familia":"proceso","rol":"falla","urgencia":"vigilar","preguntaGuia":"¿El head medido viene cayendo poco a poco frente a la curva, evaluación tras evaluación?","significado":"La bomba perdió sellado interno y ya no alcanza su curva de fábrica. Es envejecimiento, acelerado por sólidos y por cavitación.","causas":["Horas de operación acumuladas","Sólidos en el fluido","Cavitación sostenida","Tiempo acumulado fuera de la ventana del BEP"],"verificar":["Comparar el head medido contra la curva a lo largo del histórico","Revisar la frecuencia equivalente: si baja con el tiempo, es desgaste"],"acciones":["Documentar la tendencia y proyectar el cambio de la unidad","Corregir las causas que lo aceleran: sólidos, cavitación, operación fuera de ventana"],"empujeAxial":{"tipo":"upthrust","severidad":"leve","porQue":"Una bomba desgastada da menos presión al mismo caudal, así que el punto se corre hacia la derecha de la curva."},"danos":["DA-10","DA-17"],"llevaA":["EV-02","EV-07"],"provieneDe":["EV-17","EV-22","EV-28"],"glosario":["desgasteDeEtapas","curvaDeFabrica","frecuenciaEquivalente"]}},"DANOS":{"DA-01":{"id":"DA-01","titulo":"Upthrust — empuje invertido hacia la descarga","tipo":"mecanico","gravedad":"grave","queLePasaALaBomba":"Con caudal excesivo el empuje se invierte: los impulsores se levantan de su apoyo normal y quedan repiqueteando contra el lado de descarga. Dejan de girar centrados.","comoSeDetecta":"Caudal muy por encima de lo normal con presión de descarga baja, vibración que aumenta al abrir la descarga y amperaje alto.","ventanaDeTiempo":"Horas. Es el modo de falla más rápido de una HPS: se corrige de inmediato, no se programa.","derivaEn":["DA-03","DA-12","DA-04"]},"DA-02":{"id":"DA-02","titulo":"Downthrust excesivo","tipo":"mecanico","gravedad":"moderado","queLePasaALaBomba":"Con poco caudal y mucha presión los impulsores se cargan contra el lado de succión con más fuerza de la prevista. La cámara de empuje trabaja por encima de su diseño.","comoSeDetecta":"Caudal bajo con presión de descarga alta, temperatura de la cámara de empuje por encima de lo habitual.","ventanaDeTiempo":"Días o semanas. Avisa antes de romper: primero sube la temperatura y cae el caudal.","derivaEn":["DA-03","DA-08","DA-14"]},"DA-03":{"id":"DA-03","titulo":"Desgaste de arandelas de empuje","tipo":"mecanico","gravedad":"moderado","queLePasaALaBomba":"Las arandelas sobre las que se apoya cada impulsor se consumen. Aparece juego axial y el conjunto rotativo empieza a moverse donde no debe.","comoSeDetecta":"No se ve sin abrir la bomba. Se infiere del tiempo acumulado fuera de la ventana del BEP y del aceite de la cámara con partículas.","ventanaDeTiempo":"Acumulativo. Cada hora fuera de ventana suma.","derivaEn":["DA-12","DA-04"]},"DA-04":{"id":"DA-04","titulo":"Rotura del eje","tipo":"mecanico","gravedad":"terminal","queLePasaALaBomba":"El eje se parte por fatiga. El motor sigue girando pero ya no arrastra los impulsores.","comoSeDetecta":"El amperaje cae en seco y la presión desaparece con el motor todavía corriendo.","ventanaDeTiempo":"Instantáneo. Es el final, no una advertencia.","derivaEn":["DA-17"]},"DA-05":{"id":"DA-05","titulo":"Cavitación — picado de impulsores","tipo":"hidraulico","gravedad":"grave","queLePasaALaBomba":"El fluido llega con tan poca presión que hierve dentro de la bomba. Las burbujas implosionan contra el metal y le arrancan partículas.","comoSeDetecta":"Ruido de grava, caudal inestable y vibración, con presión de succión por debajo de lo normal.","ventanaDeTiempo":"Horas de daño acumulado e irreversible.","derivaEn":["DA-10","DA-12","DA-07"]},"DA-06":{"id":"DA-06","titulo":"Gas lock — bloqueo por aire o gas","tipo":"hidraulico","gravedad":"moderado","queLePasaALaBomba":"Una bolsa de aire entre las etapas impide que la bomba empuje fluido. Gira en vacío.","comoSeDetecta":"Parámetros normales en el variador y aun así sin presión ni caudal. Amperaje por debajo de lo habitual.","ventanaDeTiempo":"Minutos antes de comprometer el sello, que se queda sin lubricación.","derivaEn":["DA-07","DA-08"]},"DA-07":{"id":"DA-07","titulo":"Falla del sello mecánico","tipo":"mecanico","gravedad":"grave","queLePasaALaBomba":"Las caras del sello se dañan y el fluido empieza a salir por donde el eje atraviesa la bomba.","comoSeDetecta":"Goteo o chorro por la zona del acople, olor y mancha en el skid.","ventanaDeTiempo":"Un goteo se puede vigilar un turno; un chorro obliga a parar.","derivaEn":["DA-16","DA-17"]},"DA-08":{"id":"DA-08","titulo":"Recalentamiento y vaporización del fluido","tipo":"hidraulico","gravedad":"grave","queLePasaALaBomba":"Con caudal bajo o nulo, toda la potencia del motor se queda dentro de la bomba en forma de calor. El fluido se calienta hasta vaporizarse y el metal se dilata.","comoSeDetecta":"Cuerpo de la bomba caliente al tacto, presión buena y caudal bajo o nulo.","ventanaDeTiempo":"Minutos si la descarga está cerrada del todo. Es la condición que menos tiempo tolera la unidad.","derivaEn":["DA-07","DA-15","DA-06"]},"DA-09":{"id":"DA-09","titulo":"Erosión por sólidos","tipo":"mecanico","gravedad":"moderado","queLePasaALaBomba":"La arena que entra con el fluido lima impulsores, difusores y las caras del sello.","comoSeDetecta":"Caída lenta del head frente a la curva y sólidos acumulados en el strainer.","ventanaDeTiempo":"Meses. Es desgaste acumulado.","derivaEn":["DA-10","DA-07"]},"DA-10":{"id":"DA-10","titulo":"Desgaste de etapas y anillos","tipo":"hidraulico","gravedad":"moderado","queLePasaALaBomba":"La bomba pierde sellado interno: parte del fluido se devuelve entre etapas en lugar de avanzar. Ya no alcanza su curva.","comoSeDetecta":"Head medido cayendo evaluación tras evaluación, y frecuencia equivalente cada vez más baja que la declarada.","ventanaDeTiempo":"Meses. Es el envejecimiento normal, acelerado por sólidos y cavitación.","derivaEn":["DA-17"]},"DA-11":{"id":"DA-11","titulo":"Sobrecarga o quemado del motor","tipo":"electrico","gravedad":"terminal","queLePasaALaBomba":"El motor entrega más potencia de la que tiene disponible y se calienta hasta dañar el aislamiento.","comoSeDetecta":"Amperaje por encima del nominal y alarmas de sobrecarga en el variador.","ventanaDeTiempo":"El variador lo protege si sus alarmas están activas. Con las alarmas anuladas, hasta que se quema.","derivaEn":["DA-17"]},"DA-12":{"id":"DA-12","titulo":"Vibración excesiva y fatiga","tipo":"mecanico","gravedad":"moderado","queLePasaALaBomba":"El movimiento anormal fatiga el eje, castiga rodamientos y afloja bridas y soportes de la tubería.","comoSeDetecta":"Se siente en el skid. Si cambia al cambiar el caudal, el origen es hidráulico; si no, es mecánico.","ventanaDeTiempo":"Días o semanas hasta la falla de un rodamiento o del eje.","derivaEn":["DA-04","DA-14","DA-07"]},"DA-13":{"id":"DA-13","titulo":"Sobrepresión — presión de trabajo superada","tipo":"hidraulico","gravedad":"grave","queLePasaALaBomba":"La carcasa, las bridas y el sello trabajan por encima de la presión para la que fueron diseñados.","comoSeDetecta":"Presión de descarga por encima del seteo de la VRP, o succión alta que se suma a una descarga ya alta.","ventanaDeTiempo":"Inmediato: es un riesgo de seguridad, no sólo de equipo.","derivaEn":["DA-07","DA-16"]},"DA-14":{"id":"DA-14","titulo":"Falla de rodamientos de la cámara de empuje","tipo":"mecanico","gravedad":"grave","queLePasaALaBomba":"Los rodamientos que absorben el empuje pierden su película de aceite y empiezan a trabajar metal contra metal.","comoSeDetecta":"Temperatura alta en la cámara, aceite oscuro, lechoso o con partículas.","ventanaDeTiempo":"Días una vez que el aceite se degrada.","derivaEn":["DA-04","DA-15"]},"DA-15":{"id":"DA-15","titulo":"Agarrotamiento del conjunto rotativo","tipo":"mecanico","gravedad":"terminal","queLePasaALaBomba":"Por dilatación térmica o por desgaste, las partes que giran rozan contra las fijas hasta trabarse.","comoSeDetecta":"Amperaje disparado y la unidad que no arranca o dispara al arrancar.","ventanaDeTiempo":"Instantáneo una vez que ocurre.","derivaEn":["DA-04","DA-11","DA-17"]},"DA-16":{"id":"DA-16","titulo":"Derrame de fluido","tipo":"ambiental","gravedad":"grave","queLePasaALaBomba":"El fluido sale del sistema: por el sello, por una brida o durante una maniobra de venteo mal hecha.","comoSeDetecta":"Charco o mancha en el skid, o alrededor de la unidad.","ventanaDeTiempo":"Reportable de inmediato.","derivaEn":["DA-17"]},"DA-17":{"id":"DA-17","titulo":"Parada no programada y pérdida de producción","tipo":"operativo","gravedad":"grave","queLePasaALaBomba":"La unidad sale de servicio sin haberlo previsto. El cliente deja de recibir el servicio contratado.","comoSeDetecta":"Unidad parada.","ventanaDeTiempo":"Es el resultado, no un proceso."},"DA-18":{"id":"DA-18","titulo":"Operación a ciegas","tipo":"operativo","gravedad":"moderado","queLePasaALaBomba":"No es un daño en sí: es quedarse sin el dato que permite saber si la bomba está sufriendo. Sin caudal confiable no se puede saber si hay upthrust ni si se cruzó el MCSF.","comoSeDetecta":"MC-II en cero o congelado, o manómetros que no coinciden entre sí.","ventanaDeTiempo":"Tolerable un turno con rondas frecuentes; más allá de eso se escala a Mantenimiento.","derivaEn":["DA-01","DA-02"]}},"FAMILIAS":{"descarga":{"titulo":"Presión de descarga","color":"#c2410c"},"caudal":{"titulo":"Caudal","color":"#0369a1"},"succion":{"titulo":"Presión de succión","color":"#0f766e"},"electrico":{"titulo":"Eléctrico","color":"#a16207"},"instrumentacion":{"titulo":"Instrumentación","color":"#6d28d9"},"mecanico":{"titulo":"Mecánico","color":"#be123c"},"proceso":{"titulo":"Proceso y línea","color":"#4d7c0f"}},"GLOSARIO":{"head":{"titulo":"Head diferencial","definicion":"Presión que la bomba le añade al fluido, en psi. En campo se mide como presión de descarga menos presión de succión.","enCampo":"Si la descarga marca 1 800 psi y la succión 60 psi, el head es 1 740 psi. Es lo único que la bomba realmente aporta.","nota":"Se expresa en psi y no en pies porque las curvas de estas unidades vienen en psi para una densidad concreta.","relacionados":["presionDescarga","presionSuccion","densidad"]},"curvaDeFabrica":{"titulo":"Curva de fábrica","definicion":"Relación head–caudal que el fabricante garantiza para la bomba a una velocidad dada, con agua limpia y la bomba nueva.","enCampo":"Es la referencia contra la que se compara todo lo demás. Si el punto medido cae por debajo, la bomba ya no da lo que daba.","nota":"Una bomba desgastada queda por debajo de su curva; ninguna bomba la supera de forma sostenida.","relacionados":["bep","mcsf","runout","leyesDeAfinidad"]},"leyesDeAfinidad":{"titulo":"Leyes de afinidad","definicion":"Reglas que permiten trasladar una curva de una velocidad a otra: el caudal escala con la frecuencia, el head con la frecuencia al cuadrado y la potencia con la frecuencia al cubo.","enCampo":"Por eso basta guardar una sola curva de 60 Hz por bomba: cualquier otra frecuencia se calcula a partir de ella.","nota":"Contrastado contra las curvas multi-velocidad de fábrica, el error máximo es de 4 psi.","relacionados":["frecuencia","curvaDeFabrica"]},"bep":{"titulo":"BEP — punto de mejor eficiencia","definicion":"Caudal al que la bomba alcanza su máxima eficiencia hidráulica. La ventana sana de operación va del 70 % al 120 % de ese caudal.","enCampo":"Es el punto donde la bomba está más cómoda: menos vibración, menos empuje axial y menos consumo por barril.","nota":"Operar lejos del BEP no rompe la bomba de inmediato, pero le acorta la vida por cargas radiales y por empuje axial.","relacionados":["empujeAxial","upthrust","downthrust","eficiencia"]},"mcsf":{"titulo":"MCSF — caudal mínimo continuo estable","definicion":"Caudal por debajo del cual la bomba no debe trabajar de forma sostenida. Por debajo de él aparece recirculación interna, vibración y calentamiento del fluido.","enCampo":"Es el piso. Estrangular la descarga para subir presión es válido, pero nunca hasta cruzar el MCSF.","nota":"Escala linealmente con la frecuencia, igual que el resto de caudales.","relacionados":["recirculacion","downthrust","estrangular"],"eventos":["EV-04","EV-05"]},"runout":{"titulo":"Runout — extremo derecho de la curva","definicion":"Zona de caudal muy alto y head muy bajo. La potencia que pide la bomba se dispara y necesita mucha más presión de succión para no cavitar.","enCampo":"Se llega ahí cuando la descarga se queda sin contrapresión: una línea rota, una válvula muy abierta o el resto de bombas del cabezal fuera de servicio.","nota":"Es la zona donde aparece el upthrust, el empuje que más rápido destruye una bomba.","relacionados":["upthrust","cavitacion","contrapresion"],"eventos":["EV-03"]},"frecuenciaEquivalente":{"titulo":"Frecuencia equivalente","definicion":"Frecuencia cuya curva de fábrica pasa exactamente por el punto que se midió en campo.","enCampo":"Si el variador dice 55 Hz pero el punto cae sobre la curva de 50 Hz, o el variador no está donde se cree, o la bomba ya perdió capacidad.","nota":"Por sí sola es un diagnóstico, no una alarma: primero se confirma el variador.","relacionados":["frecuencia","desgasteDeEtapas","curvaDeFabrica"]},"eficiencia":{"titulo":"Eficiencia hidráulica","definicion":"Porcentaje de la energía del eje que termina convertida en presión útil. El resto se va en calor y en turbulencia.","enCampo":"Cae rápido a medida que el punto se aleja del BEP. Una eficiencia baja se paga en amperaje y en temperatura.","relacionados":["bep","potencia"]},"potencia":{"titulo":"Potencia al eje","definicion":"Caballos que el motor tiene que entregar para sostener ese caudal y ese head con ese fluido.","enCampo":"Se refleja directo en el amperaje del variador. Si sube sin que hayas cambiado nada, algo cambió en la hidráulica o hay roce mecánico.","relacionados":["amperaje","variador","densidad"],"eventos":["EV-08"]},"densidad":{"titulo":"Densidad / gravedad específica","definicion":"Cuánto pesa el fluido comparado con el agua. Entra en el cálculo de presión y de potencia.","enCampo":"Un fluido más pesado da más psi para el mismo head en pies, y pide más amperaje. Un fluido más ligero, lo contrario.","nota":"Si la densidad declarada no es la real, el punto se compara contra una curva que no corresponde.","relacionados":["head","potencia"]},"empujeAxial":{"titulo":"Empuje axial","definicion":"Fuerza que empuja al conjunto rotativo a lo largo del eje, hacia la succión o hacia la descarga. Cada impulsor la genera y su dirección depende de dónde estés operando en la curva.","enCampo":"No se mide con un manómetro: se deduce del caudal. Por eso, si el MC-II no lee caudal, estás operando sin saber cómo está cargada la bomba.","nota":"Quien absorbe ese empuje es la cámara de empuje y las arandelas de cada etapa. Son piezas de desgaste: se consumen.","relacionados":["upthrust","downthrust","camaraDeEmpuje","arandelasDeEmpuje","bep"],"eventos":["EV-03","EV-04","EV-05"]},"downthrust":{"titulo":"Downthrust — empuje hacia la succión","definicion":"Empuje que aparece cuando la bomba trabaja con poco caudal y mucha presión, es decir a la izquierda del BEP. Los impulsores se apoyan contra sus arandelas del lado de la succión.","enCampo":"Es la condición normal de trabajo: toda bomba está diseñada para llevar algo de downthrust. El problema es el exceso, y el exceso viene de estrangular de más, de una obstrucción aguas abajo o de operar con la descarga casi cerrada.","nota":"El downthrust severo desgasta arandelas y sobrecarga la cámara de empuje, pero avisa: sube la temperatura y baja el caudal antes de romper nada.","relacionados":["upthrust","arandelasDeEmpuje","mcsf","recirculacion","shutOff"],"eventos":["EV-01","EV-04","EV-05"]},"upthrust":{"titulo":"Upthrust — empuje hacia la descarga","definicion":"Empuje que aparece cuando la bomba entrega mucho más caudal del que le corresponde y muy poca presión, es decir a la derecha del BEP y hacia el runout. Los impulsores se levantan de su apoyo normal y golpean del lado contrario.","enCampo":"Se produce cuando la descarga se queda sin contrapresión: línea rota, válvula demasiado abierta, VRP mal seteada o las bombas del cabezal fuera de servicio.","nota":"Es el más destructivo de los dos. El impulsor deja de apoyarse y empieza a repiquetear: las arandelas se consumen en horas, la vibración se dispara y de ahí sale la mayoría de los ejes partidos. Si se detecta, se corrige de inmediato.","relacionados":["downthrust","runout","arandelasDeEmpuje","roturaDeEje","contrapresion"],"eventos":["EV-02","EV-03"]},"camaraDeEmpuje":{"titulo":"Cámara de empuje (thrust chamber)","definicion":"Conjunto de rodamientos, lleno de aceite, que absorbe el empuje axial que le llega del eje y evita que el conjunto rotativo se desplace.","enCampo":"Se vigila por temperatura y por el estado del aceite: si está lechoso entró agua, si está oscuro se recalentó, si trae partículas ya hay metal desgastándose.","relacionados":["empujeAxial","arandelasDeEmpuje","eje"],"eventos":["EV-15","EV-21"]},"arandelasDeEmpuje":{"titulo":"Arandelas de empuje (thrust washers)","definicion":"Piezas de desgaste sobre las que se apoya cada impulsor dentro de su etapa. Hay una para el lado de succión y otra para el de descarga.","enCampo":"No se ven sin desarmar la bomba. Su desgaste se infiere del tiempo que la unidad pasó fuera de la ventana del BEP.","nota":"Están diseñadas para trabajar en downthrust moderado. En upthrust se consumen muchísimo más rápido.","relacionados":["upthrust","downthrust","etapa"]},"hps":{"titulo":"HPS — sistema de bombeo horizontal","definicion":"Bomba centrífuga multietapa montada en horizontal sobre un skid, acoplada a un motor eléctrico y gobernada por un variador de frecuencia.","enCampo":"El tren completo es: bomba booster → strainer → succión → bomba HPS → descarga → medidor de caudal → cabezal del cliente.","relacionados":["bombaBooster","strainer","variador","cabezal"]},"etapa":{"titulo":"Etapa (impulsor + difusor)","definicion":"Cada par impulsor-difusor de la bomba. El impulsor gira y le da velocidad al fluido; el difusor la convierte en presión.","enCampo":"Cuantas más etapas, más presión. El caudal lo define el diseño del impulsor, no el número de etapas.","relacionados":["desgasteDeEtapas","arandelasDeEmpuje"]},"eje":{"titulo":"Eje","definicion":"Barra que transmite el giro del motor a todos los impulsores.","enCampo":"Cuando se parte, el amperaje cae de golpe y la presión desaparece aunque el motor siga girando. Es una falla terminal.","nota":"Casi nunca se parte de un solo golpe: se fatiga por upthrust sostenido, por vibración o por el esfuerzo de arrancar contra una bomba escalada.","relacionados":["upthrust","escala","vibracion"],"eventos":["EV-09","EV-20"]},"selloMecanico":{"titulo":"Sello mecánico","definicion":"Par de caras pulidas que impiden que el fluido se escape por donde el eje sale de la bomba. Se lubrican y se enfrían con el mismo fluido bombeado.","enCampo":"Es la pieza más sensible de la unidad. Un goteo constante por la zona del acople es un sello empezando a fallar.","nota":"Lo matan tres cosas: trabajar en seco, la presión de succión por encima de lo que aguanta, y los sólidos.","relacionados":["presionSuccion","gasLock","solidos"],"eventos":["EV-11","EV-16","EV-18"]},"bombaBooster":{"titulo":"Bomba booster","definicion":"Bomba pequeña que alimenta la succión de la HPS y le garantiza la presión mínima que necesita para no cavitar.","enCampo":"Si la succión está baja, lo primero es confirmar que la booster está encendida y entregando.","relacionados":["presionSuccion","cavitacion","strainer"],"eventos":["EV-10","EV-27"]},"strainer":{"titulo":"Strainer (filtro de succión)","definicion":"Canasta que retiene sólidos antes de que entren a la bomba.","enCampo":"Cuando se tapa, la succión cae aunque la booster esté trabajando bien, y el caudal baja con ella. Se confirma con el diferencial de presión entre sus dos lados.","nota":"Es la primera cosa que se revisa ante una succión baja con booster encendida.","relacionados":["presionSuccion","solidos","cavitacion"],"eventos":["EV-12"]},"variador":{"titulo":"Variador de frecuencia (VFD)","definicion":"Equipo que fija la velocidad del motor cambiando la frecuencia de alimentación, y que además protege a la unidad con alarmas de sobrecarga y de baja carga.","enCampo":"Es la pantalla donde se leen Hz, amperaje y las alarmas activas.","nota":"Sus alarmas son la última línea de defensa del equipo. Anularlas para mantener la unidad corriendo convierte una parada de una hora en un cambio de bomba.","relacionados":["frecuencia","amperaje","bypassDeAlarmas"],"eventos":["EV-08"]},"acople":{"titulo":"Acople y alineación","definicion":"Pieza que une el eje del motor con el de la bomba. La alineación es lo bien centrados que están esos dos ejes entre sí.","enCampo":"Una desalineación se siente como vibración que no cambia aunque cambies el caudal.","relacionados":["vibracion","eje"],"eventos":["EV-13"]},"presionSuccion":{"titulo":"Presión de succión","definicion":"Presión con la que el fluido llega a la entrada de la bomba.","enCampo":"Demasiado baja, la bomba cavita. Demasiado alta, castiga el sello mecánico y se suma a la presión de descarga.","relacionados":["bombaBooster","strainer","cavitacion","selloMecanico"],"eventos":["EV-10","EV-11"]},"presionDescarga":{"titulo":"Presión de descarga","definicion":"Presión con la que la bomba entrega el fluido a la línea.","enCampo":"Alta suele significar obstrucción o contrapresión del cabezal; baja suele significar fuga, desgaste o aire dentro de la bomba.","relacionados":["contrapresion","vrp","head"],"eventos":["EV-01","EV-02"]},"caudal":{"titulo":"Caudal","definicion":"Volumen de fluido que pasa por unidad de tiempo, en barriles por día.","enCampo":"Es el dato que dice en qué parte de la curva estás, y por lo tanto si tienes upthrust o downthrust. Sin caudal confiable no hay diagnóstico.","relacionados":["turbina","mcII","empujeAxial"],"eventos":["EV-19"]},"frecuencia":{"titulo":"Frecuencia (Hz)","definicion":"Velocidad de giro que el variador le impone al motor.","enCampo":"Es la palanca principal del operador: subir Hz sube caudal y presión; bajarlos, lo contrario.","relacionados":["variador","leyesDeAfinidad"]},"amperaje":{"titulo":"Amperaje","definicion":"Corriente que consume el motor. Es el reflejo directo de cuánto esfuerzo le está costando mover la bomba.","enCampo":"Alto: escala, sólidos, roce o exceso de caudal. Bajo de golpe: eje partido, gas lock o falta de fluido.","relacionados":["potencia","escala","eje","variador"],"eventos":["EV-08","EV-09"]},"mcII":{"titulo":"MC-II","definicion":"Computador de flujo que toma la señal del pick-up y la convierte en el caudal que ve el operador.","enCampo":"Si no recibe señal, la pantalla se queda en cero o congelada aunque la bomba esté entregando.","nota":"Un MC-II caído no es sólo un problema de reporte: sin caudal no se puede saber si la bomba está en upthrust.","relacionados":["pickUp","turbina","caudal"],"eventos":["EV-19"]},"pickUp":{"titulo":"Pick-up","definicion":"Sensor magnético roscado sobre la turbina del medidor. Cuenta las vueltas del rotor y le manda los pulsos al MC-II.","enCampo":"Falla por suciedad en la punta, por cables sin contacto o por quedar mal roscado, demasiado lejos del rotor.","relacionados":["mcII","turbina"],"eventos":["EV-19"]},"turbina":{"titulo":"Turbina (medidor de caudal)","definicion":"Medidor con un rotor interno que gira en proporción al caudal que pasa por él.","enCampo":"Si se tapa con escala o sólidos, además de dejar de medir se convierte en una restricción real: sube la presión de descarga y baja el caudal.","relacionados":["pickUp","escala","solidos"],"eventos":["EV-04","EV-19"]},"manometroAnalogo":{"titulo":"Manómetro análogo","definicion":"Reloj mecánico de presión instalado en la unidad.","enCampo":"Es el juez cuando se duda del transmisor. Ante una lectura rara, se compara siempre contra el análogo antes de tomar cualquier acción.","relacionados":["presionDescarga","presionSuccion"],"eventos":["EV-06","EV-23"]},"bypassDeAlarmas":{"titulo":"Bypass de alarmas","definicion":"Práctica de anular temporalmente una alarma del variador o del panel para que la unidad no dispare.","enCampo":"A veces está puesto de un turno anterior y nadie lo sabe. Ante cualquier lectura fuera de rango se revisa si hay alarmas bypasseadas.","nota":"Anular una alarma no resuelve la causa: sólo quita el aviso. Una alarma de sobrecarga anulada es, casi siempre, el paso previo a un eje partido o un motor quemado.","relacionados":["variador","amperaje"],"eventos":["EV-06","EV-08"]},"aguasArribaAbajo":{"titulo":"Aguas arriba / aguas abajo","definicion":"Aguas arriba es todo lo que está antes de la bomba (tanque del cliente, booster, strainer, succión). Aguas abajo es todo lo que viene después (descarga, medidor, válvulas, cabezal).","enCampo":"Regla práctica: los problemas de presión de succión se buscan aguas arriba; los de presión de descarga, aguas abajo."},"contrapresion":{"titulo":"Contrapresión","definicion":"Resistencia que la línea le opone a la bomba. Es lo que sostiene la presión de descarga.","enCampo":"Si desaparece (línea rota, válvula muy abierta, bombas del cabezal apagadas), el caudal se dispara y la bomba se va a upthrust.","relacionados":["upthrust","runout","vrp","cabezal"],"eventos":["EV-03"]},"cabezal":{"titulo":"Cabezal / manifold / pulmón","definicion":"Punto donde el flujo de varias bombas converge en una sola línea.","enCampo":"Manda la bomba que más presión tenga. Si las demás empujan más fuerte que la tuya, tu fluido no entra a la convergencia; si las demás se apagan, tu bomba se queda sin contrapresión.","relacionados":["contrapresion","presionDescarga"],"eventos":["EV-01","EV-03","EV-23"]},"vrp":{"titulo":"Válvula reguladora de presión (VRP)","definicion":"Válvula que fija la contrapresión de descarga de la unidad. Su seteo determina la presión de descarga máxima admisible.","enCampo":"Mal seteada por lo alto, la unidad puede superar su presión de trabajo; mal seteada por lo bajo, la bomba se va a caudal excesivo.","relacionados":["contrapresion","presionDescarga","upthrust"]},"estrangular":{"titulo":"Estrangular / chocar el flujo","definicion":"Cerrar parcialmente una válvula aguas abajo para aumentar la presión de descarga a costa de bajar el caudal.","enCampo":"Es la maniobra correcta cuando la presión está baja y sobra caudal. Se hace poco a poco, vigilando que el caudal no baje del MCSF.","nota":"Estrangular de más traslada el problema: pasas de upthrust a downthrust y a recirculación.","relacionados":["mcsf","downthrust","recirculacion"],"eventos":["EV-02"]},"bypass":{"titulo":"Válvula de bypass","definicion":"Válvula que devuelve parte del fluido de la descarga hacia la succión, o hacia el tanque.","enCampo":"Se abre levemente para aliviar una succión demasiado alta cuando ya no queda margen para subir frecuencia.","nota":"Abierta de más, el fluido da vueltas sin ir a ningún lado y se calienta.","relacionados":["presionSuccion","recirculacion"],"eventos":["EV-11"]},"recirculacion":{"titulo":"Recirculación","definicion":"El fluido da vueltas dentro de la bomba en lugar de avanzar por la línea. Toda la energía del motor se convierte en calor.","enCampo":"Se reconoce por lo mismo que la delata siempre: buena presión, poco o nada de caudal y el cuerpo de la bomba calentándose.","relacionados":["shutOff","mcsf","downthrust","recalentamiento"],"eventos":["EV-05"]},"shutOff":{"titulo":"Shut-off (válvula cerrada)","definicion":"Operar con la descarga cerrada o casi cerrada: presión máxima y caudal cero.","enCampo":"Es la condición más agresiva en la que puede estar una HPS. Minutos, no horas.","nota":"Aquí el empuje es downthrust en su máximo, no upthrust. El upthrust es lo contrario: caudal excesivo.","relacionados":["recirculacion","downthrust","recalentamiento"],"eventos":["EV-05"]},"cavitacion":{"titulo":"Cavitación","definicion":"El fluido llega con tan poca presión que hierve dentro de la bomba y forma burbujas que después implosionan contra el metal.","enCampo":"Suena como si la bomba estuviera bombeando grava. Viene con vibración y con caudal inestable.","nota":"Cada implosión arranca una partícula de metal del impulsor. No se recupera: es daño acumulado.","relacionados":["npsh","presionSuccion","strainer","bombaBooster"],"eventos":["EV-10","EV-12","EV-17"]},"npsh":{"titulo":"NPSH — presión mínima en la succión","definicion":"Margen de presión que la bomba necesita en la entrada para que el fluido no hierva. Se compara el disponible en la línea contra el requerido por la bomba.","enCampo":"Lo requerido crece con el caudal: cuanto más a la derecha de la curva operas, más presión de succión necesitas para no cavitar.","relacionados":["cavitacion","runout","presionSuccion"]},"gasLock":{"titulo":"Gas lock / aire dentro de la bomba","definicion":"Bolsa de aire o de gas atrapada entre las etapas. La bomba gira normal pero no logra empujar nada.","enCampo":"El cuadro típico: parámetros normales en el variador, y aun así sin presión ni caudal. Se resuelve venteando por los capilares, con un balde debajo.","nota":"Mientras la bomba está en gas lock, el sello mecánico está trabajando sin lubricación.","relacionados":["venteo","selloMecanico","amperaje"],"eventos":["EV-18"]},"venteo":{"titulo":"Venteo por capilares","definicion":"Purgar el aire atrapado abriendo las líneas capilares de la bomba hasta que salga fluido limpio y continuo.","enCampo":"Siempre con balde para evitar derrames, y con la presión de la unidad controlada.","relacionados":["gasLock"],"eventos":["EV-18"]},"escala":{"titulo":"Escala / incrustación","definicion":"Depósito mineral duro que se va pegando a las paredes internas de la bomba, del medidor y de la línea.","enCampo":"Avanza despacio y se nota como una deriva: el amperaje sube semana a semana, el caudal baja y la presión de descarga sube.","nota":"Es la causa más común de un amperaje alto que crece con el tiempo, y la antesala de un eje partido en el arranque.","relacionados":["amperaje","turbina","eje"],"eventos":["EV-08","EV-21"]},"solidos":{"titulo":"Sólidos / arena","definicion":"Partículas que vienen con el fluido del cliente.","enCampo":"Tapan el strainer, erosionan los impulsores y rayan las caras del sello mecánico.","relacionados":["strainer","selloMecanico","cavitacion"],"eventos":["EV-22"]},"desgasteDeEtapas":{"titulo":"Desgaste de etapas","definicion":"Pérdida gradual de material en impulsores y anillos. La bomba deja de sellar internamente y ya no alcanza su curva.","enCampo":"Se ve como una caída lenta y sostenida del head medido frente a la curva, evaluación tras evaluación.","nota":"Una caída progresiva apunta a desgaste; una caída brusca apunta a instrumentación o a una falla mecánica.","relacionados":["curvaDeFabrica","frecuenciaEquivalente","solidos"],"eventos":["EV-26"]},"recalentamiento":{"titulo":"Recalentamiento del fluido","definicion":"El fluido retenido dentro de la bomba absorbe toda la energía del motor y sube de temperatura hasta llegar a vaporizarse.","enCampo":"Se detecta con la mano o con termómetro sobre el cuerpo de la bomba: temperatura por encima de lo habitual con caudal bajo o nulo.","relacionados":["recirculacion","shutOff","selloMecanico"],"eventos":["EV-05","EV-15"]},"vibracion":{"titulo":"Vibración","definicion":"Movimiento anormal de la unidad. Es un síntoma, nunca una causa.","enCampo":"Si cambia al cambiar el caudal, el origen es hidráulico (upthrust, cavitación, recirculación). Si no cambia, el origen es mecánico (desalineación, base floja, rodamientos).","relacionados":["upthrust","cavitacion","acople"],"eventos":["EV-13"]},"golpeDeAriete":{"titulo":"Golpe de ariete","definicion":"Onda de presión que recorre la línea cuando el flujo se detiene de golpe, por un cierre brusco de válvula o una parada súbita.","enCampo":"Se oye como un golpe seco en la tubería. Castiga soportes, bridas y el check de descarga.","relacionados":["presionDescarga"],"eventos":["EV-24"]},"roturaDeEje":{"titulo":"Rotura de eje","definicion":"Falla terminal: el eje se parte y el motor gira sin arrastrar los impulsores.","enCampo":"Se reconoce porque el amperaje cae en seco y la presión desaparece mientras el motor sigue corriendo. Se para la unidad de inmediato.","nota":"Es el final de una historia larga: upthrust sostenido, escala o vibración que nadie corrigió a tiempo.","relacionados":["upthrust","escala","vibracion","eje"],"eventos":["EV-20"]}}}</script>
+<script type="module">
+/**
+ * HPS-DOOM — Árbol de sucesos.
+ *
+ * Construye y dibuja el grafo causa-efecto de eventos.js. Sin dependencias:
+ * las aristas son un SVG y los nodos son divs posicionados encima, así el
+ * texto se ve nítido y se puede seleccionar.
+ *
+ * Este módulo no importa nada a propósito: recibe los diccionarios como
+ * argumento. Eso permite usarlo dentro de la app (importando eventos.js) y
+ * también inlinearlo en un HTML autocontenido (generarArbolHtml.mjs).
+ *
+ *   import { EVENTOS, DANOS, FAMILIAS } from "./eventos.js";
+ *   import { construirGrafo, dibujarArbol } from "./arbolEventos.js";
+ *
+ *   const grafo = construirGrafo({ eventos: EVENTOS, danos: DANOS });
+ *   const api = dibujarArbol(document.querySelector("#arbol"), grafo, {
+ *     familias: FAMILIAS,
+ *     glosario: GLOSARIO,
+ *     alSeleccionar: (nodo) => console.log(nodo.id),
+ *   });
+ *
+ * El grafo tiene ciclos reales (por ejemplo cavitación → desgaste → menos
+ * presión → más caudal → más cavitación). No se rompen: se dibujan aparte,
+ * punteados, como aristas de realimentación.
+ */
+
+// ---------------------------------------------------------------------------
+// 1. Construcción del grafo
+// ---------------------------------------------------------------------------
+
+const SIMBOLO_EMPUJE = {
+  upthrust: "↑",
+  downthrust: "↓",
+  variable: "↕",
+  transicion: "↕",
+  ninguno: "·",
+};
+
+const COLOR_EMPUJE = {
+  upthrust: "#dc2626",
+  downthrust: "#d97706",
+  variable: "#7c3aed",
+  transicion: "#7c3aed",
+  ninguno: "#94a3b8",
+};
+
+/**
+ * Convierte los diccionarios en {nodos, aristas} listos para dibujar.
+ *
+ * @param {object} opciones
+ * @param {Record<string, any>} opciones.eventos
+ * @param {Record<string, any>} [opciones.danos]
+ * @param {boolean} [opciones.incluirDanos=true]  Añade una columna final con los daños.
+ * @param {string[]} [opciones.soloFamilias]      Filtra por familia.
+ */
+function construirGrafo({
+  eventos,
+  danos = {},
+  incluirDanos = true,
+  soloFamilias = null,
+} = {}) {
+  const nodos = [];
+  const aristas = [];
+
+  const pasaFiltro = (ev) => !soloFamilias || soloFamilias.includes(ev.familia);
+
+  for (const ev of Object.values(eventos)) {
+    if (!pasaFiltro(ev)) continue;
+    nodos.push({
+      id: ev.id,
+      clase: "evento",
+      titulo: ev.titulo,
+      familia: ev.familia,
+      rol: ev.rol,
+      urgencia: ev.urgencia,
+      empuje: ev.empujeAxial?.tipo ?? "ninguno",
+      empujeSeveridad: ev.empujeAxial?.severidad ?? "no aplica",
+      simbolo: SIMBOLO_EMPUJE[ev.empujeAxial?.tipo] ?? SIMBOLO_EMPUJE.ninguno,
+      colorEmpuje: COLOR_EMPUJE[ev.empujeAxial?.tipo] ?? COLOR_EMPUJE.ninguno,
+      datos: ev,
+    });
+  }
+
+  const existe = new Set(nodos.map((n) => n.id));
+
+  for (const ev of Object.values(eventos)) {
+    if (!existe.has(ev.id)) continue;
+    for (const destino of ev.llevaA ?? []) {
+      if (!existe.has(destino)) continue;
+      aristas.push({ desde: ev.id, hasta: destino, tipo: "causa" });
+    }
+  }
+
+  if (incluirDanos) {
+    const usados = new Set();
+    for (const ev of Object.values(eventos)) {
+      if (!existe.has(ev.id)) continue;
+      for (const d of ev.danos ?? []) if (danos[d]) usados.add(d);
+    }
+    for (const id of usados) {
+      const d = danos[id];
+      nodos.push({
+        id,
+        clase: "dano",
+        titulo: d.titulo,
+        familia: "dano",
+        rol: "dano",
+        urgencia: d.gravedad,
+        gravedad: d.gravedad,
+        empuje: "ninguno",
+        simbolo: "",
+        colorEmpuje: COLOR_EMPUJE.ninguno,
+        datos: d,
+      });
+    }
+    for (const ev of Object.values(eventos)) {
+      if (!existe.has(ev.id)) continue;
+      for (const d of ev.danos ?? []) {
+        if (!usados.has(d)) continue;
+        aristas.push({ desde: ev.id, hasta: d, tipo: "dano" });
+      }
+    }
+  }
+
+  const grafo = { nodos, aristas };
+  calcularCapas(grafo);
+  ordenarCapas(grafo);
+  return grafo;
+}
+
+/**
+ * Asigna a cada nodo su columna.
+ *
+ * El grafo es denso y con ciclos, así que una capa por cada salto produciría
+ * diez columnas y un dibujo ilegible. En vez de eso las columnas son
+ * semánticas y se limitan a seis: causa raíz, tres niveles de propagación,
+ * falla y daño. La profundidad bruta se calcula igual (camino más largo desde
+ * las raíces) pero se recorta a MAX_EVENTO.
+ *
+ * Las aristas que en la profundidad bruta apuntan hacia atrás se marcan como
+ * realimentación: son ciclos reales del proceso y se dibujan aparte.
+ */
+const MAX_EVENTO = 4;
+
+function calcularCapas(grafo) {
+  const porId = new Map(grafo.nodos.map((n) => [n.id, n]));
+  const entrantes = new Map(grafo.nodos.map((n) => [n.id, []]));
+  for (const a of grafo.aristas) {
+    if (porId.has(a.hasta) && porId.get(a.desde)?.clase === "evento") {
+      entrantes.get(a.hasta).push(a.desde);
+    }
+  }
+
+  const bruto = new Map();
+  const enCurso = new Set();
+
+  const resolver = (id) => {
+    if (bruto.has(id)) return bruto.get(id);
+    if (enCurso.has(id)) return 0; // ciclo: lo cortamos sólo para este cálculo
+    enCurso.add(id);
+    let maximo = -1;
+    for (const padre of entrantes.get(id) ?? []) {
+      if (enCurso.has(padre)) continue;
+      maximo = Math.max(maximo, resolver(padre));
+    }
+    enCurso.delete(id);
+    const valor = maximo + 1;
+    bruto.set(id, valor);
+    return valor;
+  };
+
+  for (const n of grafo.nodos) n.profundidad = resolver(n.id);
+
+  for (const n of grafo.nodos) {
+    if (n.clase === "dano") n.capa = MAX_EVENTO + 1;
+    else if (n.rol === "causaRaiz") n.capa = 0;
+    else if (n.rol === "falla") n.capa = Math.max(MAX_EVENTO, Math.min(n.profundidad, MAX_EVENTO));
+    else n.capa = Math.min(Math.max(n.profundidad, 1), MAX_EVENTO - 1);
+  }
+
+  for (const a of grafo.aristas) {
+    const d = porId.get(a.desde);
+    const h = porId.get(a.hasta);
+    a.retro = Boolean(d && h && h.profundidad <= d.profundidad && h.clase !== "dano");
+  }
+
+  grafo.capas = [];
+  for (const n of grafo.nodos) (grafo.capas[n.capa] ||= []).push(n);
+  for (let i = 0; i < grafo.capas.length; i += 1) grafo.capas[i] ||= [];
+}
+
+/**
+ * Ordena los nodos dentro de cada columna para que se crucen menos líneas.
+ * Heurística de baricentro, cuatro pasadas de ida y vuelta: suficiente para
+ * un grafo de este tamaño y sin dependencias.
+ */
+function ordenarCapas(grafo, pasadas = 4) {
+  const porId = new Map(grafo.nodos.map((n) => [n.id, n]));
+  const salientes = new Map(grafo.nodos.map((n) => [n.id, []]));
+  const entrantes = new Map(grafo.nodos.map((n) => [n.id, []]));
+  for (const a of grafo.aristas) {
+    if (a.retro) continue;
+    salientes.get(a.desde)?.push(a.hasta);
+    entrantes.get(a.hasta)?.push(a.desde);
+  }
+
+  const indice = new Map();
+  const reindexar = () => {
+    for (const capa of grafo.capas)
+      capa.forEach((n, i) => indice.set(n.id, i));
+  };
+  reindexar();
+
+  const baricentro = (id, mapa) => {
+    const vecinos = mapa.get(id) ?? [];
+    if (!vecinos.length) return indice.get(id) ?? 0;
+    const suma = vecinos.reduce((acc, v) => acc + (indice.get(v) ?? 0), 0);
+    return suma / vecinos.length;
+  };
+
+  for (let p = 0; p < pasadas; p += 1) {
+    const haciaAdelante = p % 2 === 0;
+    const orden = haciaAdelante
+      ? grafo.capas.map((_, i) => i)
+      : grafo.capas.map((_, i) => i).reverse();
+    for (const i of orden) {
+      const mapa = haciaAdelante ? entrantes : salientes;
+      grafo.capas[i] = grafo.capas[i]
+        .map((n) => ({ n, b: baricentro(n.id, mapa) }))
+        .sort((x, y) => x.b - y.b)
+        .map((x) => x.n);
+      reindexar();
+    }
+  }
+
+  grafo.capas.forEach((capa, c) =>
+    capa.forEach((n, f) => {
+      n.columna = c;
+      n.fila = f;
+      porId.set(n.id, n);
+    })
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 2. Dibujo
+// ---------------------------------------------------------------------------
+
+const NS = "http://www.w3.org/2000/svg";
+
+const CSS_ARBOL = `
+.arbol-raiz { --fondo:#f6f7f9; --panel:#ffffff; --borde:#dfe3e8; --texto:#1b1f24;
+  --suave:#5c6672; --tenue:#9aa4b0; --linea:#c3cad3; --realce:#1d4ed8;
+  --causa:#0f766e; --efecto:#b91c1c;
+  display:flex; height:100%; min-height:520px; background:var(--fondo);
+  color:var(--texto); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+@media (prefers-color-scheme: dark) { .arbol-raiz:not([data-tema="claro"]) {
+  --fondo:#12161b; --panel:#1a2028; --borde:#2c3540; --texto:#e6eaef;
+  --suave:#9aa6b4; --tenue:#6b7684; --linea:#3a4550; --realce:#60a5fa;
+  --causa:#5eead4; --efecto:#fca5a5; } }
+.arbol-raiz[data-tema="oscuro"] { --fondo:#12161b; --panel:#1a2028; --borde:#2c3540;
+  --texto:#e6eaef; --suave:#9aa6b4; --tenue:#6b7684; --linea:#3a4550;
+  --realce:#60a5fa; --causa:#5eead4; --efecto:#fca5a5; }
+
+.arbol-lienzo-wrap { position:relative; flex:1; overflow:hidden; cursor:grab; }
+.arbol-lienzo-wrap.arrastrando { cursor:grabbing; }
+.arbol-lienzo { position:absolute; top:0; left:0; transform-origin:0 0; }
+.arbol-aristas { position:absolute; top:0; left:0; overflow:visible; pointer-events:none; }
+.arbol-arista { fill:none; stroke:var(--linea); stroke-width:1.5; transition:stroke .15s,opacity .15s,stroke-width .15s; }
+.arbol-arista.retro { stroke-dasharray:5 4; opacity:.55; }
+.arbol-arista.dano { stroke-dasharray:2 3; opacity:.4; }
+.arbol-arista.apagada { opacity:.07; }
+.arbol-arista.causa-activa { stroke:var(--causa); stroke-width:2.5; opacity:1; }
+.arbol-arista.efecto-activo { stroke:var(--efecto); stroke-width:2.5; opacity:1; }
+
+.arbol-nodo { position:absolute; box-sizing:border-box; background:var(--panel);
+  border:1px solid var(--borde); border-left-width:4px; border-radius:8px;
+  padding:8px 10px; cursor:pointer; transition:opacity .15s,box-shadow .15s,transform .1s;
+  box-shadow:0 1px 2px rgba(0,0,0,.05); }
+.arbol-nodo:hover { transform:translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.12); }
+.arbol-nodo.apagado { opacity:.16; }
+.arbol-nodo.seleccionado { box-shadow:0 0 0 2px var(--realce),0 4px 12px rgba(0,0,0,.15); }
+.arbol-nodo.es-causa { box-shadow:0 0 0 2px var(--causa); }
+.arbol-nodo.es-efecto { box-shadow:0 0 0 2px var(--efecto); }
+.arbol-nodo-cab { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+.arbol-nodo-id { font:600 10px/1 ui-monospace,SFMono-Regular,Menlo,monospace;
+  letter-spacing:.03em; color:var(--tenue); }
+.arbol-nodo-empuje { margin-left:auto; font-weight:700; font-size:13px; line-height:1; }
+.arbol-nodo-titulo { font-size:12.5px; font-weight:550; line-height:1.35; }
+.arbol-nodo.dano { border-style:dashed; background:transparent; }
+.arbol-nodo.dano .arbol-nodo-titulo { font-weight:450; color:var(--suave); }
+
+.arbol-capa-rotulo { position:absolute; font:600 10px/1 -apple-system,sans-serif;
+  text-transform:uppercase; letter-spacing:.08em; color:var(--tenue); white-space:nowrap; }
+
+.arbol-panel { width:340px; flex:0 0 340px; border-left:1px solid var(--borde);
+  background:var(--panel); overflow-y:auto; padding:16px 18px 40px; }
+.arbol-panel h2 { margin:0 0 2px; font-size:15px; line-height:1.3; }
+.arbol-panel h3 { margin:16px 0 5px; font-size:10.5px; text-transform:uppercase;
+  letter-spacing:.07em; color:var(--tenue); font-weight:600; }
+.arbol-panel p { margin:0 0 8px; font-size:12.5px; color:var(--suave); }
+.arbol-panel ul { margin:0; padding-left:16px; font-size:12.5px; color:var(--suave); }
+.arbol-panel li { margin-bottom:4px; }
+.arbol-panel .meta { font:600 10px/1 ui-monospace,monospace; color:var(--tenue);
+  letter-spacing:.04em; margin-bottom:8px; display:block; }
+.arbol-chip { display:inline-block; font:600 10px/1 ui-monospace,monospace;
+  padding:4px 7px; margin:0 4px 4px 0; border:1px solid var(--borde);
+  border-radius:5px; cursor:pointer; background:transparent; color:var(--texto); }
+.arbol-chip:hover { border-color:var(--realce); color:var(--realce); }
+.arbol-aviso { border-left:3px solid #d97706; padding:7px 10px; margin:8px 0;
+  background:rgba(217,119,6,.08); font-size:12px; border-radius:0 5px 5px 0; }
+.arbol-aviso.corregir { border-left-color:var(--realce); background:rgba(29,78,216,.08); }
+.arbol-vacio { color:var(--tenue); font-size:12.5px; }
+
+.arbol-barra { position:absolute; top:12px; left:12px; right:12px; z-index:5;
+  display:flex; gap:6px; flex-wrap:wrap; align-items:center; pointer-events:none; }
+.arbol-barra > * { pointer-events:auto; }
+.arbol-filtro { font:500 11px/1 -apple-system,sans-serif; padding:5px 9px;
+  border:1px solid var(--borde); border-radius:14px; background:var(--panel);
+  color:var(--suave); cursor:pointer; }
+.arbol-filtro[aria-pressed="true"] { color:#fff; border-color:transparent; }
+.arbol-busqueda { font:12px -apple-system,sans-serif; padding:5px 9px; width:150px;
+  border:1px solid var(--borde); border-radius:14px; background:var(--panel); color:var(--texto); }
+.arbol-boton { font:500 11px/1 -apple-system,sans-serif; padding:5px 9px;
+  border:1px solid var(--borde); border-radius:14px; background:var(--panel);
+  color:var(--suave); cursor:pointer; }
+.arbol-boton:hover { border-color:var(--realce); color:var(--realce); }
+`;
+
+/**
+ * Dibuja el árbol dentro de un contenedor.
+ *
+ * @param {HTMLElement} contenedor
+ * @param {ReturnType<typeof construirGrafo>} grafo
+ * @param {object} [opciones]
+ * @param {Record<string,{titulo:string,color:string}>} [opciones.familias]
+ * @param {Record<string,any>} [opciones.glosario]
+ * @param {(nodo:any)=>void} [opciones.alSeleccionar]
+ * @param {boolean} [opciones.panel=true]  Muestra el panel lateral de detalle.
+ * @returns {{seleccionar:Function, limpiar:Function, ajustar:Function, destruir:Function, grafo:object}}
+ */
+function dibujarArbol(contenedor, grafo, opciones = {}) {
+  const {
+    familias = {},
+    glosario = {},
+    alSeleccionar = null,
+    panel: conPanel = true,
+    anchoNodo = 208,
+    separacionColumnas = 96,
+    separacionFilas = 14,
+    margen = 56,
+  } = opciones;
+
+  const ROTULOS = [
+    "Causa raíz",
+    "Primer síntoma",
+    "Se propaga",
+    "Consecuencia",
+    "Falla",
+    "Daño acumulado",
+  ];
+
+  contenedor.innerHTML = "";
+  contenedor.classList.add("arbol-raiz");
+
+  const wrap = crear("div", "arbol-lienzo-wrap");
+  const lienzo = crear("div", "arbol-lienzo");
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("class", "arbol-aristas");
+  lienzo.appendChild(svg);
+  wrap.appendChild(lienzo);
+  contenedor.appendChild(wrap);
+
+  const panel = conPanel ? crear("aside", "arbol-panel") : null;
+  if (panel) contenedor.appendChild(panel);
+
+  // --- barra de controles -------------------------------------------------
+  const barra = crear("div", "arbol-barra");
+  const busqueda = crear("input", "arbol-busqueda");
+  busqueda.placeholder = "Buscar…";
+  busqueda.type = "search";
+  barra.appendChild(busqueda);
+
+  const familiasPresentes = [...new Set(grafo.nodos.map((n) => n.familia))].filter(
+    (f) => familias[f]
+  );
+  const activas = new Set(familiasPresentes);
+  const botones = new Map();
+  for (const f of familiasPresentes) {
+    const b = crear("button", "arbol-filtro");
+    b.textContent = familias[f].titulo;
+    b.setAttribute("aria-pressed", "true");
+    b.style.background = familias[f].color;
+    b.style.color = "#fff";
+    b.addEventListener("click", () => {
+      if (activas.has(f)) activas.delete(f);
+      else activas.add(f);
+      const on = activas.has(f);
+      b.setAttribute("aria-pressed", String(on));
+      b.style.background = on ? familias[f].color : "";
+      b.style.color = on ? "#fff" : "";
+      aplicarFiltros();
+    });
+    botones.set(f, b);
+    barra.appendChild(b);
+  }
+
+  const btnAjustar = crear("button", "arbol-boton");
+  btnAjustar.textContent = "Encuadrar";
+  btnAjustar.addEventListener("click", () => ajustar());
+  barra.appendChild(btnAjustar);
+
+  const btnLimpiar = crear("button", "arbol-boton");
+  btnLimpiar.textContent = "Limpiar";
+  btnLimpiar.addEventListener("click", () => limpiar());
+  barra.appendChild(btnLimpiar);
+
+  wrap.appendChild(barra);
+
+  // --- nodos --------------------------------------------------------------
+  const elementos = new Map();
+  const porId = new Map(grafo.nodos.map((n) => [n.id, n]));
+
+  for (const n of grafo.nodos) {
+    const el = crear("div", `arbol-nodo ${n.clase}`);
+    el.dataset.id = n.id;
+    el.style.width = `${anchoNodo}px`;
+    const color = familias[n.familia]?.color ?? "#94a3b8";
+    el.style.borderLeftColor = color;
+
+    const cab = crear("div", "arbol-nodo-cab");
+    const id = crear("span", "arbol-nodo-id");
+    id.textContent = n.id;
+    id.style.color = color;
+    cab.appendChild(id);
+    if (n.simbolo) {
+      const emp = crear("span", "arbol-nodo-empuje");
+      emp.textContent = n.simbolo;
+      emp.style.color = n.colorEmpuje;
+      emp.title = `Empuje: ${n.empuje} (${n.empujeSeveridad})`;
+      cab.appendChild(emp);
+    }
+    el.appendChild(cab);
+
+    const tit = crear("div", "arbol-nodo-titulo");
+    tit.textContent = n.titulo;
+    el.appendChild(tit);
+
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      seleccionar(n.id);
+    });
+    lienzo.appendChild(el);
+    elementos.set(n.id, el);
+  }
+
+  // --- posiciones (se miden después de insertar, para respetar el alto real)
+  const rotulos = [];
+  let ancho = 0;
+  let alto = 0;
+
+  const MAX_FILAS = 10;
+
+  function posicionar() {
+    let x = margen;
+    let maxAlto = 0;
+    for (let c = 0; c < grafo.capas.length; c += 1) {
+      const capa = grafo.capas[c].filter((n) => !n.oculto);
+      // Una columna con muchos nodos se parte en sub-columnas: si no, el
+      // dibujo queda altísimo y al encuadrar no se lee nada.
+      const sub = Math.max(1, Math.ceil(capa.length / MAX_FILAS));
+      const porSub = Math.ceil(capa.length / sub);
+      const xCapa = x;
+      let y = margen;
+      capa.forEach((n, i) => {
+        const s = Math.floor(i / porSub);
+        if (i % porSub === 0) y = margen;
+        const el = elementos.get(n.id);
+        const h = el.offsetHeight || 52;
+        n.x = xCapa + s * (anchoNodo + 24);
+        n.y = y;
+        n.w = anchoNodo;
+        n.h = h;
+        el.style.left = `${n.x}px`;
+        el.style.top = `${y}px`;
+        y += h + separacionFilas;
+        maxAlto = Math.max(maxAlto, y);
+      });
+      if (rotulos[c]) {
+        rotulos[c].style.left = `${xCapa}px`;
+        rotulos[c].style.top = `${margen - 26}px`;
+        rotulos[c].style.display = capa.length ? "" : "none";
+      }
+      x = xCapa + sub * (anchoNodo + 24) - 24 + separacionColumnas;
+    }
+    ancho = x - separacionColumnas + margen;
+    alto = maxAlto + margen;
+    svg.setAttribute("width", ancho);
+    svg.setAttribute("height", alto);
+    lienzo.style.width = `${ancho}px`;
+    lienzo.style.height = `${alto}px`;
+  }
+
+  for (let c = 0; c < grafo.capas.length; c += 1) {
+    const r = crear("div", "arbol-capa-rotulo");
+    const esDano = grafo.capas[c].some((n) => n.clase === "dano");
+    r.textContent = esDano ? "Daño a la bomba" : ROTULOS[c] ?? `Nivel ${c}`;
+    lienzo.appendChild(r);
+    rotulos.push(r);
+  }
+
+  posicionar();
+
+  // --- aristas ------------------------------------------------------------
+  const defs = document.createElementNS(NS, "defs");
+  defs.innerHTML = `
+    <marker id="ar-flecha" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6"
+      markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,1 L7,4 L0,7 z" fill="context-stroke"/>
+    </marker>`;
+  svg.appendChild(defs);
+
+  const caminos = [];
+  for (const a of grafo.aristas) {
+    const p = document.createElementNS(NS, "path");
+    p.setAttribute(
+      "class",
+      `arbol-arista ${a.retro ? "retro" : ""} ${a.tipo === "dano" ? "dano" : ""}`
+    );
+    p.setAttribute("marker-end", "url(#ar-flecha)");
+    svg.appendChild(p);
+    caminos.push({ a, p });
+  }
+
+  function trazar() {
+    for (const { a, p } of caminos) {
+      const d = porId.get(a.desde);
+      const h = porId.get(a.hasta);
+      if (!d || !h || d.oculto || h.oculto) {
+        p.setAttribute("d", "");
+        continue;
+      }
+      const x1 = d.x + d.w;
+      const y1 = d.y + d.h / 2;
+      const x2 = h.x;
+      const y2 = h.y + h.h / 2;
+      const esRetorno = a.retro || x2 < x1 + 24;
+      if (esRetorno) {
+        // Realimentación: sale por abajo y vuelve, para no confundirse con el flujo.
+        const caida = Math.max(40, Math.abs(y2 - y1) * 0.4 + 30);
+        const mx = (d.x + h.x + h.w) / 2;
+        p.setAttribute(
+          "d",
+          `M ${d.x + d.w / 2} ${d.y + d.h} C ${d.x + d.w / 2} ${y1 + caida}, ` +
+            `${mx} ${Math.max(y1, y2) + caida}, ${h.x + h.w / 2} ${h.y + h.h}`
+        );
+      } else {
+        const dx = Math.max(28, (x2 - x1) * 0.45);
+        p.setAttribute("d", `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`);
+      }
+    }
+  }
+  trazar();
+
+  // --- zoom y desplazamiento ---------------------------------------------
+  let escala = 1;
+  let tx = 0;
+  let ty = 0;
+
+  function aplicarTransformacion() {
+    lienzo.style.transform = `translate(${tx}px, ${ty}px) scale(${escala})`;
+  }
+
+  function ajustar() {
+    const cw = wrap.clientWidth || 900;
+    const ch = wrap.clientHeight || 600;
+    escala = Math.min(cw / ancho, ch / alto, 1);
+    escala = Math.max(escala, 0.18);
+    tx = Math.max(0, (cw - ancho * escala) / 2);
+    // Anclado arriba: es un diagrama que se lee de izquierda a derecha, y
+    // centrarlo en vertical deja una franja vacía bajo la barra de filtros.
+    // Se descuenta el alto real de la barra, que en pantallas angostas se
+    // parte en dos líneas y taparía la primera columna.
+    ty = (barra.offsetHeight || 32) + 26;
+    aplicarTransformacion();
+  }
+
+  wrap.addEventListener(
+    "wheel",
+    (e) => {
+      e.preventDefault();
+      const r = wrap.getBoundingClientRect();
+      const px = e.clientX - r.left;
+      const py = e.clientY - r.top;
+      const factor = Math.exp(-e.deltaY * 0.0015);
+      const nueva = Math.min(2.5, Math.max(0.12, escala * factor));
+      tx = px - ((px - tx) * nueva) / escala;
+      ty = py - ((py - ty) * nueva) / escala;
+      escala = nueva;
+      aplicarTransformacion();
+    },
+    { passive: false }
+  );
+
+  let arrastre = null;
+  wrap.addEventListener("pointerdown", (e) => {
+    if (e.target.closest(".arbol-nodo, .arbol-barra")) return;
+    arrastre = { x: e.clientX - tx, y: e.clientY - ty, id: e.pointerId };
+    wrap.setPointerCapture(e.pointerId);
+    wrap.classList.add("arrastrando");
+  });
+  wrap.addEventListener("pointermove", (e) => {
+    if (!arrastre || e.pointerId !== arrastre.id) return;
+    tx = e.clientX - arrastre.x;
+    ty = e.clientY - arrastre.y;
+    aplicarTransformacion();
+  });
+  const soltar = (e) => {
+    if (!arrastre) return;
+    arrastre = null;
+    wrap.classList.remove("arrastrando");
+    if (e && wrap.hasPointerCapture?.(e.pointerId)) wrap.releasePointerCapture(e.pointerId);
+  };
+  wrap.addEventListener("pointerup", soltar);
+  wrap.addEventListener("pointercancel", soltar);
+  wrap.addEventListener("click", (e) => {
+    if (!e.target.closest(".arbol-nodo, .arbol-barra")) limpiar();
+  });
+
+  // --- selección y resaltado ---------------------------------------------
+  let seleccionado = null;
+
+  /** Distancia en saltos desde un nodo, hacia adelante o hacia atrás. */
+  function distancias(id, campo) {
+    const d = new Map();
+    let frente = [id];
+    let salto = 0;
+    while (frente.length && salto < 12) {
+      const siguiente = [];
+      for (const actual of frente) {
+        for (const a of grafo.aristas) {
+          const vecino =
+            campo === "efectos"
+              ? a.desde === actual
+                ? a.hasta
+                : null
+              : a.hasta === actual
+                ? a.desde
+                : null;
+          if (!vecino || vecino === id || d.has(vecino)) continue;
+          d.set(vecino, salto + 1);
+          siguiente.push(vecino);
+        }
+      }
+      frente = siguiente;
+      salto += 1;
+    }
+    return d;
+  }
+
+  /**
+   * Resalta la cadena del nodo elegido. El grafo es tan tupido que resaltar
+   * la cadena entera dejaría casi todo encendido y no diría nada, así que el
+   * énfasis baja con la distancia: vecino directo a plena luz, dos saltos algo
+   * más apagado, y de tres en adelante casi al nivel del resto.
+   */
+  function seleccionar(id) {
+    seleccionado = id;
+    const causas = distancias(id, "causas");
+    const efectos = distancias(id, "efectos");
+
+    const opacidad = (n) => (n <= 1 ? 1 : n === 2 ? 0.62 : 0.25);
+
+    for (const [nid, el] of elementos) {
+      const dc = causas.get(nid);
+      const de = efectos.get(nid);
+      const cerca = Math.min(dc ?? 99, de ?? 99);
+      const esYo = nid === id;
+      el.classList.toggle("seleccionado", esYo);
+      el.classList.toggle("es-causa", dc === 1);
+      el.classList.toggle("es-efecto", de === 1);
+      el.classList.remove("apagado");
+      el.style.opacity = esYo ? "1" : cerca === 99 ? "0.12" : String(opacidad(cerca));
+    }
+
+    for (const { a, p } of caminos) {
+      const dDesde = a.desde === id ? 0 : causas.get(a.desde) ?? efectos.get(a.desde);
+      const dHasta = a.hasta === id ? 0 : causas.get(a.hasta) ?? efectos.get(a.hasta);
+      const enCausas =
+        (a.hasta === id || causas.has(a.hasta)) && (a.desde === id || causas.has(a.desde));
+      const enEfectos =
+        (a.desde === id || efectos.has(a.desde)) && (a.hasta === id || efectos.has(a.hasta));
+      p.classList.toggle("causa-activa", enCausas && !enEfectos);
+      p.classList.toggle("efecto-activo", enEfectos && !enCausas);
+      const salto = Math.max(dDesde ?? 99, dHasta ?? 99);
+      p.classList.toggle("apagada", !enCausas && !enEfectos);
+      if (enCausas || enEfectos) p.style.opacity = String(opacidad(salto));
+      else p.style.opacity = "";
+    }
+
+    if (panel) pintarPanel(porId.get(id), { causas, efectos });
+    alSeleccionar?.(porId.get(id));
+  }
+
+  function limpiar() {
+    seleccionado = null;
+    for (const el of elementos.values()) {
+      el.classList.remove("apagado", "seleccionado", "es-causa", "es-efecto");
+      el.style.opacity = "";
+    }
+    for (const { p } of caminos) {
+      p.classList.remove("apagada", "causa-activa", "efecto-activo");
+      p.style.opacity = "";
+    }
+    if (panel) pintarAyuda();
+  }
+
+  function aplicarFiltros() {
+    const q = busqueda.value.trim().toLowerCase();
+    for (const n of grafo.nodos) {
+      const porFamilia = n.clase === "dano" || activas.has(n.familia);
+      const porTexto =
+        !q || `${n.id} ${n.titulo}`.toLowerCase().includes(q);
+      n.oculto = !(porFamilia && porTexto);
+      elementos.get(n.id).style.display = n.oculto ? "none" : "";
+    }
+    for (const r of rotulos) r.style.display = "";
+    posicionar();
+    trazar();
+  }
+  busqueda.addEventListener("input", aplicarFiltros);
+
+  // --- panel de detalle ---------------------------------------------------
+  function pintarAyuda() {
+    if (!panel) return;
+    const total = grafo.nodos.filter((n) => n.clase === "evento").length;
+    const danos = grafo.nodos.filter((n) => n.clase === "dano").length;
+    panel.innerHTML = `
+      <h2>Árbol de sucesos</h2>
+      <p>${total} eventos de campo y ${danos} daños, encadenados por causa y efecto.</p>
+      <h3>Cómo leerlo</h3>
+      <p>Las columnas van de la causa raíz, a la izquierda, al daño en la bomba, a la derecha.
+      Haz clic en cualquier nodo: se resalta en verde todo lo que pudo causarlo y en rojo
+      todo lo que puede desencadenar.</p>
+      <h3>Empuje axial</h3>
+      <p><b style="color:${COLOR_EMPUJE.upthrust}">↑ upthrust</b> — demasiado caudal, poca presión.
+      Es el que rompe bombas en horas.<br>
+      <b style="color:${COLOR_EMPUJE.downthrust}">↓ downthrust</b> — poco caudal, mucha presión.
+      Avisa antes de romper.<br>
+      <b style="color:${COLOR_EMPUJE.variable}">↕ variable</b> — depende de hacia dónde se mueva el punto.</p>
+      <h3>Líneas</h3>
+      <p>Continua: lleva a. Punteada corta: daño que produce.
+      Punteada larga por debajo: realimentación, el efecto vuelve sobre su causa.</p>
+      <h3>Controles</h3>
+      <p>Rueda para acercar, arrastra para mover, clic fuera para limpiar la selección.</p>`;
+  }
+
+  function pintarPanel(n, { causas, efectos }) {
+    if (!panel || !n) return;
+    const d = n.datos;
+    const lista = (arr) =>
+      arr?.length ? `<ul>${arr.map((x) => `<li>${escapar(x)}</li>`).join("")}</ul>` : "";
+    const chips = (ids, etiqueta) =>
+      ids?.length
+        ? `<h3>${etiqueta}</h3>${ids
+            .map((id) => {
+              const t = porId.get(id)?.titulo ?? id;
+              return `<button class="arbol-chip" data-ir="${id}" title="${escapar(t)}">${id}</button>`;
+            })
+            .join("")}`
+        : "";
+
+    if (n.clase === "dano") {
+      panel.innerHTML = `
+        <span class="meta">${d.id} · ${d.tipo} · ${d.gravedad}</span>
+        <h2>${escapar(d.titulo)}</h2>
+        <h3>Qué le pasa a la bomba</h3><p>${escapar(d.queLePasaALaBomba)}</p>
+        <h3>Cómo se detecta</h3><p>${escapar(d.comoSeDetecta)}</p>
+        <h3>Cuánto aguanta</h3><p>${escapar(d.ventanaDeTiempo)}</p>
+        ${chips(d.derivaEn, "Deriva en")}
+        ${chips([...causas.keys()].filter((c) => porId.get(c)?.clase === "evento" && causas.get(c) === 1), "Eventos que lo producen")}`;
+    } else {
+      const emp = d.empujeAxial ?? {};
+      panel.innerHTML = `
+        <span class="meta">${d.id} · ${d.familia} · ${d.urgencia}</span>
+        <h2>${escapar(d.titulo)}</h2>
+        <p><b>${escapar(d.preguntaGuia ?? "")}</b></p>
+        <p>${escapar(d.significado ?? "")}</p>
+        ${
+          d.correccion
+            ? `<div class="arbol-aviso">${escapar(d.correccion)}</div>`
+            : ""
+        }
+        <h3>Empuje axial · ${escapar(emp.tipo ?? "")} (${escapar(emp.severidad ?? "")})</h3>
+        <p>${escapar(emp.porQue ?? "")}</p>
+        <h3>Causas probables</h3>${lista(d.causas)}
+        <h3>Verificar</h3>${lista(d.verificar)}
+        <h3>Acciones</h3>${lista(d.acciones)}
+        ${d.noHagas?.length ? `<h3>No hagas</h3>${lista(d.noHagas)}` : ""}
+        ${
+          d.escalar
+            ? `<div class="arbol-aviso corregir"><b>Escalar:</b> ${escapar(d.escalar)}</div>`
+            : ""
+        }
+        ${chips(d.danos, "Daños posibles")}
+        ${chips(d.provieneDe, "Puede venir de")}
+        ${chips(d.llevaA, "Puede llevar a")}
+        ${
+          d.glosario?.length
+            ? `<h3>Términos</h3>${d.glosario
+                .map((k) => {
+                  const t = glosario[k];
+                  return `<button class="arbol-chip" data-termino="${k}" title="${escapar(
+                    t?.definicion ?? ""
+                  )}">${escapar(t?.titulo ?? k)}</button>`;
+                })
+                .join("")}`
+            : ""
+        }`;
+    }
+
+    panel.querySelectorAll("[data-ir]").forEach((b) =>
+      b.addEventListener("click", () => seleccionar(b.dataset.ir))
+    );
+    panel.querySelectorAll("[data-termino]").forEach((b) =>
+      b.addEventListener("click", () => {
+        const t = glosario[b.dataset.termino];
+        if (!t) return;
+        panel.innerHTML = `
+          <span class="meta">glosario</span>
+          <h2>${escapar(t.titulo)}</h2>
+          <p>${escapar(t.definicion)}</p>
+          ${t.enCampo ? `<h3>En campo</h3><p>${escapar(t.enCampo)}</p>` : ""}
+          ${t.nota ? `<h3>Nota</h3><p>${escapar(t.nota)}</p>` : ""}
+          ${chips(t.eventos, "Se ve en")}`;
+        panel.querySelectorAll("[data-ir]").forEach((x) =>
+          x.addEventListener("click", () => seleccionar(x.dataset.ir))
+        );
+      })
+    );
+  }
+
+  pintarAyuda();
+  requestAnimationFrame(ajustar);
+
+  const alRedimensionar = () => ajustar();
+  window.addEventListener("resize", alRedimensionar);
+
+  return {
+    grafo,
+    seleccionar,
+    limpiar,
+    ajustar,
+    get seleccionado() {
+      return seleccionado;
+    },
+    destruir() {
+      window.removeEventListener("resize", alRedimensionar);
+      contenedor.innerHTML = "";
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Utilidades
+// ---------------------------------------------------------------------------
+
+function crear(etiqueta, clase) {
+  const el = document.createElement(etiqueta);
+  if (clase) el.className = clase;
+  return el;
+}
+
+function escapar(s) {
+  return String(s ?? "").replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
+  );
+}
+
+/** Inyecta el CSS del árbol una sola vez. */
+function inyectarEstilos(documento = document) {
+  if (documento.getElementById("arbol-eventos-css")) return;
+  const s = documento.createElement("style");
+  s.id = "arbol-eventos-css";
+  s.textContent = CSS_ARBOL;
+  documento.head.appendChild(s);
+}
+
+
+const { EVENTOS, DANOS, FAMILIAS, GLOSARIO } =
+  JSON.parse(document.getElementById("datos-hps").textContent);
+
+inyectarEstilos();
+const grafo = construirGrafo({ eventos: EVENTOS, danos: DANOS });
+const api = dibujarArbol(document.getElementById("arbol"), grafo, {
+  familias: { ...FAMILIAS, dano: { titulo: "Daños", color: "#64748b" } },
+  glosario: GLOSARIO,
+});
+window.arbolHPS = api;
+</script>
+</body>
+</html>

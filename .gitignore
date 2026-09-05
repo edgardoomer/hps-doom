@@ -1,0 +1,38 @@
+# ---------------------------------------------------------------------------
+# Secretos — NUNCA subir. La clave del asistente vive en codigo_lovable/.env
+# y en producción se pone como variable de entorno del hosting.
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+
+# Dependencias y artefactos de compilación
+node_modules/
+dist/
+dist-ssr/
+.output/
+.nitro/
+.vinxi/
+.tanstack/
+.wrangler/
+.dev.vars
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Sistema y editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
