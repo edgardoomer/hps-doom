@@ -1,0 +1,274 @@
+# Despliegue en una VM de Google Cloud (e2-medium)
+
+Guía para publicar HPS-DOOM en una máquina virtual de Google Compute Engine.
+Stack: **Debian/Ubuntu + Node 22 + Nitro (node-server) + Nginx + HTTPS
+(Let's Encrypt)**. La aplicación no usa base de datos: los datos de bombas y
+curvas viven en el código.
+
+> **Aviso de coste.** La `e2-medium` (2 vCPU, 4 GB) **no está en la capa
+> gratuita**; factura por hora encendida, del orden de 25 USD/mes. La única
+> máquina *Always Free* es la `e2-micro` en `us-west1`, `us-central1` o
+> `us-east1`, y en ella el build de Vite se queda sin memoria: con 1 GB el
+> proceso muere a mitad. Si quieres coste cero, usa `e2-micro` y sigue la
+> variante del final: construyes en tu equipo y subes solo el resultado.
+
+> **Lo que rompe el despliegue.** El build por defecto genera un bundle para
+> **Cloudflare Workers**, no para Node. Hay que construir con
+> `NITRO_PRESET=node-server`. Está en la FASE 3 y es el paso que no se puede
+> saltar.
+
+---
+
+## FASE 1 · Crear la VM en Google Cloud
+
+1. Entra en <https://console.cloud.google.com> y selecciona tu proyecto.
+2. Menú → **Compute Engine → Instancias de VM → Crear instancia**.
+3. Configura:
+   - **Región:** `us-east1` o `us-central1` (las más cercanas a Ecuador con
+     buen precio).
+   - **Serie:** E2 · **Tipo de máquina:** `e2-medium`.
+   - **Disco de arranque:** Debian 12 (o Ubuntu 24.04 LTS), 20 GB estándar
+     sobra: la app ocupa 4 MB y las dependencias unos 350 MB.
+   - **Firewall:** marca **Permitir tráfico HTTP** y **Permitir tráfico HTTPS**.
+4. **Crear.** Anota la **IP externa** que aparece en la lista.
+5. (Recomendado) Reserva esa IP como **estática** para que no cambie al
+   reiniciar: VPC network → IP addresses → reservar la IP externa de la VM.
+   Si vas a poner un dominio, esto es obligatorio.
+
+---
+
+## FASE 2 · Conectarte y preparar el servidor
+
+Pulsa el botón **SSH** junto a la VM (abre una terminal en el navegador, sin
+configurar claves). Dentro:
+
+```bash
+# Actualizar el sistema
+sudo apt update && sudo apt upgrade -y
+
+# Node 22 LTS desde el repositorio oficial de NodeSource
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs git nginx
+
+# Comprueba que quedó una version valida (debe decir v22.x o superior)
+node -v
+```
+
+> Con 4 GB de RAM no hace falta swap. Si algún día bajas de máquina, añádela
+> antes de construir:
+> `sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile`
+
+---
+
+## FASE 3 · Traer el código y construirlo
+
+```bash
+# El repo es publico, no necesitas credenciales
+cd ~
+git clone https://github.com/edgardoomer/hps-doom.git
+cd hps-doom/codigo_lovable
+
+# Instalar dependencias exactamente como estan en el lockfile
+npm ci
+```
+
+Crea el archivo `.env` de **producción**:
+
+```bash
+nano .env
+```
+
+Pega esto y sustituye la clave por la tuya:
+
+```
+# Clave del asistente del chat.
+DEEPSEEK_API_KEY=tu-clave-de-deepseek
+
+# Puerto interno. Nginx reenviara aqui; no se expone al exterior.
+PORT=3000
+
+# Opcionales, solo si quieres cambiar los valores por defecto.
+# DEEPSEEK_MODEL=deepseek-chat
+# DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
+# DEEPSEEK_MAX_TOKENS=1500
+```
+
+Protege el archivo, porque contiene un secreto:
+
+```bash
+chmod 600 .env
+```
+
+> `.env` está en `.gitignore`, así que sobrevive a los `git pull` y nunca se
+> sube al repositorio.
+
+Ahora el build. **La variable `NITRO_PRESET` no es opcional:** sin ella
+obtienes un bundle de Cloudflare Workers que no arranca con `node`.
+
+```bash
+NITRO_PRESET=node-server npm run build
+
+# Verifica el preset antes de seguir: debe imprimir  node-server
+node -e "console.log(require('./.output/nitro.json').preset)"
+```
+
+Prueba rápida (Ctrl+C para salir). Debe responder `200`:
+
+```bash
+PORT=3000 node .output/server/index.mjs &
+sleep 3
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:3000/curvas
+kill %1
+```
+
+---
+
+## FASE 4 · La aplicación como servicio (systemd)
+
+Así arranca sola al encender la máquina y se reinicia si se cae.
+
+```bash
+sudo tee /etc/systemd/system/hps-doom.service > /dev/null <<EOF
+[Unit]
+Description=HPS-DOOM
+After=network-online.target
+
+[Service]
+Type=simple
+User=$USER
+WorkingDirectory=$HOME/hps-doom/codigo_lovable
+EnvironmentFile=$HOME/hps-doom/codigo_lovable/.env
+ExecStart=/usr/bin/node .output/server/index.mjs
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now hps-doom
+sudo systemctl status hps-doom --no-pager   # debe decir "active (running)"
+```
+
+---
+
+## FASE 5 · Nginx por delante
+
+La aplicación escucha en el 3000, que **no** debe quedar expuesto. Nginx
+recibe en el 80 y el 443 y reenvía hacia dentro.
+
+```bash
+sudo tee /etc/nginx/sites-available/hps-doom > /dev/null <<'EOF'
+server {
+  listen 80;
+  server_name _;
+
+  location / {
+    proxy_pass http://127.0.0.1:3000;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # El asistente puede tardar; no cortes la respuesta antes de tiempo.
+    proxy_read_timeout 120s;
+  }
+}
+EOF
+
+sudo ln -sf /etc/nginx/sites-available/hps-doom /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl restart nginx
+```
+
+Abre `http://TU_IP_EXTERNA` en el navegador: ya debería verse el panel de
+operación. La raíz redirige sola a `/curvas`.
+
+---
+
+## FASE 6 · HTTPS gratis (necesita un dominio)
+
+Let's Encrypt **no emite certificados para una IP**, hace falta un nombre.
+Opciones para un subdominio gratis: [DuckDNS](https://www.duckdns.org),
+[js.org](https://js.org) o [FreeDNS](https://freedns.afraid.org). Apunta un
+registro **A** de tu dominio a la IP estática de la VM.
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d tudominio.com -d www.tudominio.com
+```
+
+Certbot edita Nginx, activa HTTPS y programa la renovación automática. No hay
+que tocar nada más en la aplicación: no tiene ajuste de redirección propio.
+
+---
+
+## Actualizar el sitio más adelante
+
+Cada vez que subas cambios a GitHub:
+
+```bash
+cd ~/hps-doom && git pull
+cd codigo_lovable && npm ci && NITRO_PRESET=node-server npm run build
+sudo systemctl restart hps-doom
+```
+
+---
+
+## Variante de coste cero (e2-micro)
+
+Si prefieres no pagar, crea la VM como `e2-micro` en `us-west1`,
+`us-central1` o `us-east1` con disco estándar de hasta 30 GB. El único cambio
+es que **la máquina no construye**: lo haces en tu equipo y subes el
+resultado, que pesa 4,2 MB y es autocontenido.
+
+En tu equipo:
+
+```bash
+cd codigo_lovable
+NITRO_PRESET=node-server npm run build
+gcloud compute scp --recurse .output NOMBRE-VM:~/hps-doom/ --zone ZONA
+```
+
+En la VM se saltan el `git clone`, el `npm ci` y el build. El `.env` va en
+`~/hps-doom/.env`, y en el servicio de systemd cambian dos líneas:
+
+```
+WorkingDirectory=/home/TU_USUARIO/hps-doom
+EnvironmentFile=/home/TU_USUARIO/hps-doom/.env
+```
+
+El resto —nginx, firewall, certificado— es idéntico. Para actualizar,
+reconstruyes en tu equipo, vuelves a copiar y `sudo systemctl restart hps-doom`.
+
+---
+
+## Notas y solución de problemas
+
+- **Logs de la app:** `sudo journalctl -u hps-doom -n 50 --no-pager`
+- **Logs de Nginx:** `sudo tail -n 50 /var/log/nginx/error.log`
+- **No arranca y el log menciona `wrangler` o `Cloudflare`:** construiste sin
+  `NITRO_PRESET=node-server`. Repite el build de la FASE 3.
+- **502 en Nginx:** el servicio está caído o escucha en otro puerto. Revisa
+  `sudo systemctl status hps-doom` y que `PORT` en el `.env` coincida con el
+  `proxy_pass` de Nginx.
+- **La página carga pero el chat no responde:** falta la clave o la máquina no
+  sale a internet. Comprueba desde la VM con
+  `curl -s -o /dev/null -w "%{http_code}\n" https://api.deepseek.com`.
+  Sin clave la aplicación sigue funcionando: el análisis inicial se redacta en
+  local y solo las consultas del chat quedan sin modelo.
+- **`unable to verify the first certificate`:** hay un proxy que inspecciona
+  TLS. La aplicación ya fusiona las CAs del sistema; añade la raíz corporativa
+  al almacén de la VM y ejecuta `sudo update-ca-certificates`.
+- **Timeout al preguntar al chat:** Nginx corta antes que el modelo. Sube
+  `proxy_read_timeout` en la configuración de la FASE 5.
+- **No hay base de datos ni copias de seguridad que hacer.** Los datos de las
+  14 unidades, las curvas de fábrica y los diccionarios del asistente están en
+  el código. Lo único que vive solo en la VM es el `.env` con la clave.
+- **DeepSeek** necesita saldo en la cuenta para responder. Es pago por uso: una
+  consulta del chat gasta unos 10.000 tokens de entrada, céntimos con tu
+  tráfico.
+- **Rota la clave** que usaste en desarrollo antes de publicar, y pon la nueva
+  solo en el `.env` de la VM.
