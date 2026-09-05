@@ -153,9 +153,6 @@ function DocumentacionPage() {
             </article>
           ))}
         </div>
-        <p className="mt-2 text-[10.5px] leading-snug text-muted-foreground">
-          Los instructivos viven en la intranet de Sertecpet y piden sesión corporativa.
-        </p>
       </BarraPlegable>
 
       {/* Visor de la curva de fábrica: sólo la imagen. */}
