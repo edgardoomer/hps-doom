@@ -1,7 +1,7 @@
 # Despliegue en una VM de Google Cloud (e2-medium)
 
 Guía para publicar HPS-DOOM en una máquina virtual de Google Compute Engine.
-Stack: **Debian/Ubuntu + Node 22 + Nitro (node-server) + Nginx + HTTPS
+Stack: **Debian/Ubuntu + Node 22 + npm 11 + Nitro (node-server) + Nginx + HTTPS
 (Let's Encrypt)**. La aplicación no usa base de datos: los datos de bombas y
 curvas viven en el código.
 
@@ -50,9 +50,20 @@ sudo apt update && sudo apt upgrade -y
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs git nginx
 
-# Comprueba que quedó una version valida (debe decir v22.x o superior)
-node -v
+# Node 22 trae npm 10, que NO puede instalar este proyecto (ver nota abajo)
+sudo npm install -g npm@11
+
+# Comprueba: node debe decir v22.x o superior, npm debe decir 11.x o superior
+node -v && npm -v
 ```
+
+> **Por qué hay que actualizar npm.** El árbol de dependencias tiene un
+> conflicto entre pares (`ajv` 6 y 8) que el resolutor de npm 10 no sabe
+> expresar en un lockfile coherente: `npm ci` falla con
+> `Missing: lru-cache@... from lock file` o `Invalid: lock file's ajv@6...`.
+> No es un lockfile roto — el mismo archivo instala sin problema con npm 11 y
+> con npm 12. Regenerarlo con npm 10 no lo arregla: el lock que produce falla
+> contra sí mismo.
 
 > Con 4 GB de RAM no hace falta swap. Si algún día bajas de máquina, añádela
 > antes de construir:
@@ -249,6 +260,10 @@ reconstruyes en tu equipo, vuelves a copiar y `sudo systemctl restart hps-doom`.
 
 - **Logs de la app:** `sudo journalctl -u hps-doom -n 50 --no-pager`
 - **Logs de Nginx:** `sudo tail -n 50 /var/log/nginx/error.log`
+- **`npm ci` falla con `Missing: ... from lock file` o `Invalid: lock file's ajv@...`:**
+  estás en npm 10. Actualiza con `sudo npm install -g npm@11` y repite. No
+  ejecutes `npm install` para "arreglar" el lock: con npm 10 genera uno que
+  sigue fallando.
 - **No arranca y el log menciona `wrangler` o `Cloudflare`:** construiste sin
   `NITRO_PRESET=node-server`. Repite el build de la FASE 3.
 - **502 en Nginx:** el servicio está caído o escucha en otro puerto. Revisa
