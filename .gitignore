@@ -17,6 +17,7 @@ dist/
 dist-ssr/
 .output/
 .nitro/
+.netlify/
 .vinxi/
 .tanstack/
 .wrangler/

@@ -121,7 +121,7 @@ export const analizarEnServidor = createServerFn({ method: "POST" })
         texto: respuestaLocal(peticion, pregunta),
         origen: "local",
         aviso:
-          "No hay clave API configurada: añade DEEPSEEK_API_KEY al archivo .env para que el modelo responda.",
+          "No hay clave API configurada: define DEEPSEEK_API_KEY (en el .env en local, o como variable de entorno del hosting) para que el modelo responda.",
       };
     }
 

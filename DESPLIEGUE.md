@@ -315,3 +315,51 @@ reconstruyes en tu equipo, vuelves a copiar y `sudo systemctl restart hps-doom`.
   tráfico.
 - **Rota la clave** que usaste en desarrollo antes de publicar, y pon la nueva
   solo en el `.env` de la VM.
+
+---
+
+## Alternativa sin servidor: Netlify
+
+Si no quieres mantener una VM, el proyecto también corre en Netlify sin
+tocar el código: los estáticos van a su CDN y el servidor SSR (con la server
+function del asistente) se convierte en una Netlify Function. La
+configuración ya está en el repositorio, en `netlify.toml`: carpeta base
+`codigo_lovable`, build con Node 24 y preset `netlify` de Nitro, publicación
+de `dist/`. En el plan gratuito sobra para este tráfico.
+
+1. En [app.netlify.com](https://app.netlify.com) → **Add new project → Import
+   an existing project → GitHub** y elige `edgardoomer/hps-doom`. Netlify
+   lee `netlify.toml`, así que no cambies nada en el formulario de build.
+2. Antes de desplegar, en **Site configuration → Environment variables**,
+   añade `DEEPSEEK_API_KEY` con tu clave. Es la única variable necesaria; sin
+   ella el sitio funciona igual, pero el chat responde con el motor local.
+3. **Deploy.** El primer build tarda unos 2 minutos. Cada `git push` a `main`
+   vuelve a desplegar solo.
+
+Para reproducir el build de Netlify en tu equipo:
+
+```bash
+cd codigo_lovable
+NITRO_PRESET=netlify npm run build
+```
+
+Deja los estáticos en `dist/` y la función en
+`.netlify/functions-internal/server/`. Ambas carpetas están en `.gitignore`.
+
+Cosas que conviene saber:
+
+- **Node 24, no 22.** `netlify.toml` fija `NODE_VERSION = "24"` porque trae
+  npm 11; con el npm 10 de Node 22 la instalación falla igual que en la VM
+  (ver arriba). Las funciones corren en la misma versión de Node que el
+  build.
+- **Sólo hay un lockfile, `package-lock.json`.** Netlify elige el gestor de
+  paquetes por el lockfile que encuentra: si hubiera un `bun.lock` instalaría
+  con Bun. Si algún día lo regeneras con Bun, bórralo antes de subirlo.
+- **Tiempo de las funciones.** Netlify corta cada petición síncrona a los
+  60 segundos, en todos los planes. Una consulta al chat tarda entre 2 y 20
+  segundos según lo largo de la respuesta, así que sobra margen; sólo si
+  DeepSeek se quedara colgado vería el usuario un error en vez de la
+  respuesta del motor local.
+- **La clave no viaja en el repositorio.** El código la lee de `process.env`
+  dentro de la función; Netlify inyecta ahí las variables del panel. Lo mismo
+  de siempre: rota la que usaste en desarrollo y pon la nueva sólo en Netlify.

@@ -1,0 +1,28 @@
+# ---------------------------------------------------------------------------
+# Despliegue en Netlify
+# ---------------------------------------------------------------------------
+# La aplicación vive en codigo_lovable/, así que `base` apunta ahí y el resto
+# de rutas se resuelven desde esa carpeta.
+#
+# El build de Nitro con el preset `netlify` deja:
+#   dist/                              → estáticos (publish)
+#   .netlify/functions-internal/server → el servidor SSR como Netlify Function
+# Nitro reconoce Netlify por sí solo, pero el preset se fija para que el build
+# en local (NITRO_PRESET=netlify npm run build) sea idéntico al del hosting.
+#
+# Lo único que NO va en este archivo es la clave del asistente. Se define en
+# el panel de Netlify, para que no quede en el repositorio:
+#   Site configuration → Environment variables → DEEPSEEK_API_KEY
+# ---------------------------------------------------------------------------
+
+[build]
+  base    = "codigo_lovable"
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Node 24 trae npm 11. Con el npm 10 que acompaña a Node 22 este árbol de
+  # dependencias no instala (conflicto de peers ajv 6/8, ver DESPLIEGUE.md).
+  # Las funciones corren en la misma versión de Node que el build.
+  NODE_VERSION = "24"
+  NITRO_PRESET = "netlify"
